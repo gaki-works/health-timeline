@@ -429,6 +429,25 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 .region-extra-grid{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
 .region-extra-grid button{padding:10px 13px;min-height:44px;border:1px solid var(--border);border-radius:10px;background:var(--card2);color:var(--text);font-weight:700}
 @media(max-width:400px){.global-start-button{font-size:19px}}
+
+/* v5 身体図：広いタップ領域と詳細部位選択 */
+.bodymap svg{width:min(100%,320px);max-height:none;height:auto;display:block}
+.bodymap .anatomy-zone{fill:rgba(56,189,248,.20);stroke:#94a3b8;stroke-width:1.2;cursor:pointer;transition:fill .15s}
+.bodymap .anatomy-zone:focus-visible,.bodymap .anatomy-zone:hover{fill:rgba(52,211,153,.48);stroke:#fff;stroke-width:2.2;outline:none}
+.bodymap .anatomy-zone.is-active{fill:rgba(16,185,129,.62);stroke:#f0fdf4;stroke-width:2.4}
+.bodymap .anatomy-label{fill:#f8fafc;font-size:8px;text-anchor:middle;pointer-events:none;font-weight:700;paint-order:stroke;stroke:#0f172a;stroke-width:2px;stroke-linejoin:round}
+.bodymap .anatomy-caption{font-size:11px;fill:#cbd5e1;text-anchor:middle}
+.body-region-picker{position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:10003;display:none;align-items:center;justify-content:center;padding:env(safe-area-inset-top,12px) 12px env(safe-area-inset-bottom,12px)}
+.body-region-picker.open{display:flex}
+.body-region-picker .picker-card{background:var(--card);border:1px solid var(--border);border-radius:18px;width:min(100%,520px);max-height:94dvh;display:flex;flex-direction:column;overflow:hidden}
+.body-region-picker .picker-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+.body-region-picker .picker-main{padding:14px;overflow:auto;overscroll-behavior:contain}
+.body-region-picker .picker-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.body-region-picker .picker-options button{min-height:52px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;font-weight:700;padding:9px}
+.body-region-picker .picker-options button:focus-visible{outline:3px solid #93c5fd}
+.body-region-picker .picker-footer{padding:12px;border-top:1px solid var(--border);background:var(--card);display:grid;gap:8px}
+.body-region-picker .picker-footer button{min-height:48px}
+.bodymap-legend{color:var(--muted);font-size:12px;text-align:center;margin:10px 0}
 </style>
 </head>
 <body>
@@ -472,7 +491,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
         <button id="btnBack">裏側</button>
       </div>
       <div id="activePanel"></div>
-      <div class="bodymap"><div id="svgHolder"></div></div><div id="extraRegionButtons" class="region-extra-grid" aria-label="身体図にない部位"></div>
+      <div class="bodymap"><div id="svgHolder"></div></div><div class="bodymap-legend">身体図の色付き部分をタップ → 詳しい場所を選択</div><div id="extraRegionButtons" class="region-extra-grid" aria-label="身体図にない部位"></div>
     </div>
 
     <button class="add-manual-btn" id="openManualPain">＋ 痛みの記録を手動で追加</button>
@@ -736,6 +755,15 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 <div class="modal-backdrop" id="captureBackdrop" role="dialog" aria-modal="true" aria-labelledby="captureTitle">
   <div class="modal"><div class="capture-top"><h3 id="captureTitle">記録中の詳細</h3><button type="button" id="captureClose" class="ghost-btn" style="width:auto;margin:0">閉じる</button></div><div class="capture-body" id="captureFields"></div><div class="capture-footer"><button type="button" id="captureSaveDetails" class="primary-btn">詳細を保存する（記録は継続）</button><button type="button" id="captureStop" class="primary-btn" style="background:#b91c1c">終了時刻を記録</button></div></div>
 </div>
+
+<div class="body-region-picker" id="bodyRegionPicker" role="dialog" aria-modal="true" aria-labelledby="bodyRegionPickerTitle">
+ <div class="picker-card">
+  <div class="picker-header"><h3 id="bodyRegionPickerTitle">部位を選択</h3><button type="button" class="close-btn" id="bodyRegionPickerClose" aria-label="閉じる">✕</button></div>
+  <div class="picker-main"><p class="hint">詳しい場所を選べます。分からないときは大まかな部位だけでも記録できます。</p><div class="picker-options" id="bodyRegionPickerOptions"></div></div>
+  <div class="picker-footer"><button type="button" class="primary-btn" id="bodyRegionPickerCoarse">この部位全体で記録する</button><button type="button" class="ghost-btn" id="bodyRegionPickerCancel">キャンセル</button></div>
+ </div>
+</div>
+
 <!-- プライバシー初回オーバーレイ -->
 <div class="privacy-overlay" id="privacyOverlay" style="display:none">
   <div class="privacy-box">
@@ -1199,21 +1227,77 @@ function renderBodyShape(){
       C74,200 72,185 68,168 C60,140 58,110 60,85 C62,68 75,58 91,56
       C100,50 130,50 139,56 Z"/>`;
 }
+// 身体図の座標は概略表示です。細かな部位名は選択画面で確定します。
+const ANATOMY_ZONES = {
+ front:[
+  {key:'頭',shape:'ellipse',cx:115,cy:31,rx:20,ry:23,labelY:32},
+  {key:'顔',shape:'ellipse',cx:115,cy:42,rx:15,ry:12,labelY:42},
+  {key:'首',shape:'rect',x:105,y:56,w:20,h:17,labelY:67},
+  {key:'胸',shape:'rect',x:94,y:77,w:42,h:38,labelY:96},
+  {key:'上腹部',shape:'rect',x:97,y:116,w:36,h:28,labelY:132},
+  {key:'右下腹部',shape:'rect',x:115,y:145,w:20,h:24,labelY:155},
+  {key:'左下腹部',shape:'rect',x:95,y:145,w:20,h:24,labelY:155},
+  {key:'下腹部',shape:'rect',x:101,y:170,w:28,h:15,labelY:180},
+  {key:'骨盤部',shape:'rect',x:100,y:186,w:30,h:18,labelY:198},
+  {key:'右腕',shape:'path',d:'M139 73 L155 71 L166 101 L168 155 L158 157 L146 108 Z',tx:155,ty:114},
+  {key:'左腕',shape:'path',d:'M91 73 L75 71 L64 101 L62 155 L72 157 L84 108 Z',tx:75,ty:114},
+  {key:'右脚',shape:'path',d:'M117 207 L143 207 L144 273 L151 331 L128 332 L119 269 Z',tx:134,ty:265},
+  {key:'左脚',shape:'path',d:'M113 207 L87 207 L86 273 L79 331 L102 332 L111 269 Z',tx:96,ty:265}
+ ],
+ back:[
+  {key:'頭',shape:'ellipse',cx:115,cy:34,rx:20,ry:24,labelY:34},
+  {key:'首',shape:'rect',x:105,y:58,w:20,h:18,labelY:70},
+  {key:'背中上部',shape:'rect',x:96,y:77,w:38,h:48,labelY:100},
+  {key:'腰',shape:'rect',x:98,y:127,w:34,h:32,labelY:143},
+  {key:'臀部',shape:'rect',x:96,y:164,w:38,h:35,labelY:180},
+  {key:'肛門・会陰部',shape:'rect',x:105,y:199,w:20,h:13,labelY:208},
+  {key:'右腕',shape:'path',d:'M91 73 L75 71 L64 101 L62 155 L72 157 L84 108 Z',tx:75,ty:114},
+  {key:'左腕',shape:'path',d:'M139 73 L155 71 L166 101 L168 155 L158 157 L146 108 Z',tx:155,ty:114},
+  {key:'右脚',shape:'path',d:'M113 207 L87 207 L86 273 L79 331 L102 332 L111 269 Z',tx:96,ty:265},
+  {key:'左脚',shape:'path',d:'M117 207 L143 207 L144 273 L151 331 L128 332 L119 269 Z',tx:134,ty:265}
+ ]
+};
+function renderAnatomyZone(z){
+ const selected=!!activeSessions[z.key],a=`class="anatomy-zone${selected?' is-active':''}" role="button" tabindex="0" data-key="${safeText(z.key)}" aria-label="${safeText(z.key)}を選択"`;
+ const shape=z.shape==='ellipse'?`<ellipse ${a} cx="${z.cx}" cy="${z.cy}" rx="${z.rx}" ry="${z.ry}"/>`:z.shape==='rect'?`<rect ${a} x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="5"/>`:`<path ${a} d="${z.d}"/>`;
+ const tx=z.tx??(z.shape==='rect'?z.x+z.w/2:z.cx),ty=z.ty??z.labelY;
+ const short={'右下腹部':'右下','左下腹部':'左下','肛門・会陰部':'会陰','背中上部':'背中'}[z.key]||z.key;
+ return shape+`<text class="anatomy-label" x="${tx}" y="${ty}">${short}</text>`;
+}
+let currentBodyRegion='';
+function openBodyRegionPicker(region){
+ currentBodyRegion=region;
+ const picker=document.getElementById('bodyRegionPicker'),title=document.getElementById('bodyRegionPickerTitle'),options=document.getElementById('bodyRegionPickerOptions');
+ title.textContent=region+'：詳しい場所を選択';
+ const details=typeof availableDetails==='function'?availableDetails(region):[];
+ options.innerHTML=details.map(detail=>`<button type="button" data-detail="${safeText(detail)}">${safeText(detail)}</button>`).join('')||'<p class="hint">詳細部位はまだ登録されていません。大まかな部位で記録するか、設定から詳細部位を追加できます。</p>';
+ options.querySelectorAll('[data-detail]').forEach(btn=>btn.onclick=()=>confirmBodyRegionPicker(btn.dataset.detail));
+ document.getElementById('bodyRegionPickerCoarse').textContent=region+'全体で記録する';
+ picker.classList.add('open');document.getElementById('bodyRegionPickerCoarse').focus();
+}
+function confirmBodyRegionPicker(detail){
+ const key=currentBodyRegion;if(!key)return;
+ if(!activeSessions[key])addActiveRegion(key);
+ // 詳細は従来のregion文字列と分けて保持し、既存の集計・フィルタへの影響を小さくする。
+ activeSessions[key].detail=detail||'';
+ persistActivePainSessions();
+ renderActivePanel();renderBodyMap();closeBodyRegionPicker();
+ document.getElementById('activePanel')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function closeBodyRegionPicker(){document.getElementById('bodyRegionPicker').classList.remove('open');currentBodyRegion='';}
+document.getElementById('bodyRegionPickerClose').onclick=closeBodyRegionPicker;
+document.getElementById('bodyRegionPickerCancel').onclick=closeBodyRegionPicker;
+document.getElementById('bodyRegionPickerCoarse').onclick=()=>confirmBodyRegionPicker('');
+document.getElementById('bodyRegionPicker').addEventListener('click',e=>{if(e.target.id==='bodyRegionPicker')closeBodyRegionPicker();});
 function renderBodyMap(){
-  const list = REGIONS.filter(r => r.view === currentView);
-  let dots = '';
-  list.forEach(r => {
-    const active = !!activeSessions[r.key];
-    dots += `<circle class="region-dot${active?' selected':''}" role="button" tabindex="0" aria-label="${r.key}の痛みを記録" data-key="${r.key}" cx="${r.cx}" cy="${r.cy}" r="${r.r}" fill="${r.color}"></circle>`;
-  });
-  document.getElementById('svgHolder').innerHTML =
-    `<svg viewBox="0 0 230 345" xmlns="http://www.w3.org/2000/svg">${renderBodyShape()}${dots}</svg>`;
-  renderExtraRegionButtons();
-  document.querySelectorAll('.region-dot').forEach(el => {
-    const activate = e => { e.preventDefault(); addActiveRegion(el.getAttribute('data-key')); };
-    el.addEventListener('click', activate);
-    el.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ activate(e); } });
-  });
+ const zones=ANATOMY_ZONES[currentView]||[];
+ document.getElementById('svgHolder').innerHTML=`<svg viewBox="0 0 230 345" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="身体図・${currentView==='front'?'正面':'背面'}">${renderBodyShape()}${zones.map(renderAnatomyZone).join('')}</svg>`;
+ renderExtraRegionButtons();
+ document.querySelectorAll('#svgHolder .anatomy-zone').forEach(el=>{
+  const activate=e=>{e.preventDefault();openBodyRegionPicker(el.dataset.key);};
+  el.addEventListener('click',activate);
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){activate(e);}});
+ });
 }
 document.getElementById('btnFront').addEventListener('click', () => {
   currentView = 'front';
@@ -1240,7 +1324,7 @@ function persistActivePainSessions(){
     const out={};
     Object.entries(activeSessions).forEach(([key,s])=>{
       if(s && s.started){
-        out[key]={level:s.level,started:true,sessionId:s.sessionId,segStart:s.segStart,sessionStart:s.sessionStart,segmentIndex:s.segmentIndex||0};
+        out[key]={level:s.level,started:true,sessionId:s.sessionId,segStart:s.segStart,sessionStart:s.sessionStart,segmentIndex:s.segmentIndex||0,detail:s.detail||''};
       }
     });
     if(Object.keys(out).length) localStorage.setItem(ACTIVE_PAIN_STORAGE_KEY, JSON.stringify(out));
@@ -1263,7 +1347,7 @@ function restoreActivePainSessions(){
     activeSessions={};
     Object.entries(saved).forEach(([key,s])=>{
       if(!s || !s.started || !Number.isFinite(Number(s.sessionStart)) || !Number.isFinite(Number(s.segStart))) return;
-      activeSessions[key]={level:parseInt(s.level,10)||0,started:true,sessionId:s.sessionId||genSessionId(),segStart:Number(s.segStart),sessionStart:Number(s.sessionStart),segmentIndex:parseInt(s.segmentIndex,10)||0,timerId:null};
+      activeSessions[key]={level:parseInt(s.level,10)||0,started:true,sessionId:s.sessionId||genSessionId(),segStart:Number(s.segStart),sessionStart:Number(s.sessionStart),segmentIndex:parseInt(s.segmentIndex,10)||0,detail:s.detail||'',timerId:null};
     });
     Object.entries(activeSessions).forEach(([key,s])=>startPainTimer(key,s));
   }catch(e){}
@@ -1271,7 +1355,7 @@ function restoreActivePainSessions(){
 
 function addActiveRegion(key){
   if(activeSessions[key]) return;
-  activeSessions[key] = { level: 0, started: false, sessionId: null, segStart: null, sessionStart: null, segmentIndex: 0, timerId: null };
+  activeSessions[key] = { level: 0, started: false, sessionId: null, segStart: null, sessionStart: null, segmentIndex: 0, timerId: null, detail: '' };
   renderBodyMap();
   renderActivePanel();
 }
@@ -1322,6 +1406,7 @@ function commitPainSegment(key, s, level, startTs, endTs){
   appData.painRecords.push({
     id: appData.nextId++,
     region: key,
+    detail: s.detail||'',
     level: level,
     startTs: startTs,
     endTs: endTs,
@@ -1386,7 +1471,7 @@ function renderActivePanel(){
 
     return `<div class="region-card${s.started?' is-recording':''}">
       <div class="head">
-        <div class="name"><span class="dot" style="background:${colorOf(key)}"></span>${safeText(key)}</div>
+        <div class="name"><span class="dot" style="background:${colorOf(key)}"></span>${safeText(key)}${s.detail?'・'+safeText(s.detail):''}</div>
         <button class="close-btn" data-remove="${safeText(key)}">✕</button>
       </div>
       ${statusHtml}
@@ -1435,7 +1520,7 @@ function renderRecordsList(){
         <span class="dot" style="background:${colorOf(r.region)}"></span>
         <div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <b>${r.region}</b>
+            <b>${safeText(r.region)}${r.detail?'・'+safeText(r.detail):''}</b>
             <span style="font-size:12px;color:${face.color}">${face.label} (${r.level})</span>${tagHtml}
           </div>
           <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}〜${fmtTimeStr(r.endTs)}</div>
@@ -3512,10 +3597,15 @@ function extraRegions(){
 }
 function availableCoarseParts(){return [...new Set([...coarseParts,...extraRegions().coarse])];}
 function availableDetails(region){return [...new Set([...(detailedParts[region]||[]),...(extraRegions().details[region]||[])])];}
-function renderExtraRegionButtons(){const box=document.getElementById('extraRegionButtons');if(!box)return;
- const names=['下腹部',...extraRegions().coarse];
+function renderExtraRegionButtons(){
+ const box=document.getElementById('extraRegionButtons');if(!box)return;
+ // 身体図（正面・背面）で選択できる部位は補助一覧には重複表示しない。
+ const mapRegions=new Set(Object.values(ANATOMY_ZONES).flat().map(zone=>zone.key));
+ const names=[...new Set(extraRegions().coarse)].filter(name=>!mapRegions.has(name));
+ if(!names.length){box.innerHTML='';box.style.display='none';return;}
+ box.style.display='';
  box.innerHTML='<div class="hint" style="width:100%;margin:0">身体図にない部位はこちらから選べます</div>'+names.map(n=>`<button type="button" data-extra-region="${safeText(n)}">${safeText(n)}</button>`).join('');
- box.querySelectorAll('button').forEach(b=>b.onclick=()=>{addActiveRegion(b.dataset.extraRegion);document.getElementById('activePanel')?.scrollIntoView({behavior:'smooth',block:'nearest'});});
+ box.querySelectorAll('button').forEach(b=>b.onclick=()=>{openBodyRegionPicker(b.dataset.extraRegion);});
 }
 function renderRegionManager(){
  const defs=extraRegions(),parent=document.getElementById('detailParentRegion'),host=document.getElementById('regionManagerList');if(!host)return;
