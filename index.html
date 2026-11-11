@@ -452,6 +452,38 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 #doctorFallbackClose{color:#fff!important;background:#334155!important;-webkit-text-fill-color:#fff!important}
 #unifiedLegacySessions:empty{display:none}
 #captureActiveGlobal .capture-session{margin:12px 0}
+
+/* 周期記録: カテゴリー間で入口と履歴の見た目を揃える */
+.period-chart-legend{display:flex;gap:10px 16px;flex-wrap:wrap;margin:9px 0 13px;color:var(--muted);font-size:11.5px}
+.period-chart-legend span{display:inline-flex;gap:7px;align-items:center}
+.period-legend-line{display:inline-block;width:19px;height:0;border-top:3px solid; border-radius:2px}
+.period-legend-line.bleed{border-color:#ef4444}
+.period-legend-line.discharge{border-color:#38bdf8}
+/* iPhone等の狭い画面で日付と秒単位の時刻が衝突しないようにする */
+@media(max-width:600px){
+  .modal-backdrop .modal .field-row{flex-direction:column;gap:9px}
+  .modal-backdrop .modal .field-row>.field{width:100%;min-width:0;flex:auto}
+  .modal-backdrop .modal .field-row input{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+}
+
+/* 緊急記録の痛み: フェイススケールとスライダーを共通の強さ入力へ */
+.capture-faces{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:11px 0 14px}
+.capture-face-btn{min-width:0;min-height:65px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid var(--border);border-radius:10px;background:var(--card2);color:var(--text);cursor:pointer;font-weight:700}
+.capture-face-btn svg{width:min(36px,100%);height:36px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.capture-face-btn span{font-size:12px}
+.capture-face-btn.selected{background:#1d4ed8;border-color:#93c5fd;color:#fff}
+.capture-face-btn:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+/* 共通履歴の表示。各記録画面の重複履歴は既存の描画先としてDOMだけ残す */
+.local-history-source[hidden]{display:none!important}
+.unified-history-section .record-item{cursor:default;align-items:center;gap:10px}
+.unified-history-section .record-item .meta{overflow-wrap:anywhere}
+.unified-history-section .record-item .edit-history-btn{width:auto;min-width:76px;min-height:44px;flex-shrink:0;padding:8px 12px;color:#fff;background:#2563eb;border:0;border-radius:9px;font-weight:700}
+.unified-history-section{margin-top:20px}
+@media(max-width:600px){
+ .modal-backdrop .modal .field-row,.capture-body .field-row{display:flex!important;flex-direction:column!important;gap:10px!important}
+ .modal-backdrop .modal .field-row>.field,.capture-body .field-row>.field{width:100%!important;min-width:0!important;flex:0 0 auto!important}
+ .modal-backdrop .modal .field-row input,.capture-body .field-row input{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+}
 </style>
 </head>
 <body>
@@ -501,7 +533,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <button class="add-manual-btn" id="openManualPain">＋ 痛みの記録を手動で追加</button>
     <button class="add-manual-btn" id="openNoPain">＋ 痛みなしを記録（あとから追加も可）</button>
 
-    <div class="card"><h2>痛みの履歴</h2><div id="recordsList" class="records-list"><div class="empty">まだ記録がありません</div></div></div>
+    <div class="card local-history-source" hidden aria-hidden="true"><h2>痛みの履歴</h2><div id="recordsList" class="records-list"><div class="empty">まだ記録がありません</div></div></div>
   </div>
 
   <!-- タブ2: 全身症状 -->
@@ -513,16 +545,16 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 
     </div>
     <div id="activeSymptomPanel"></div>
-    <div class="card"><h2>症状の履歴</h2><div id="symptomHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
+    <div class="card local-history-source" hidden aria-hidden="true"><h2>症状の履歴</h2><div id="symptomHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
   </div>
 
   <!-- タブ3: 月経・出血・おりもの -->
   <div id="tab-menstrual" class="tab-content">
-    <div class="card"><h2>月経・出血</h2><div class="hint">開始・出血・終了を別々に記録できます。出血の量は時間に沿ってグラフ化できます。</div><button class="primary-btn" style="background:var(--pink)" id="openMenstrualModal">＋ 月経・出血を記録</button></div>
-    <div class="card"><h2>おりもの</h2><button class="add-manual-btn pink" id="openDischargeModal">＋ おりものを記録</button></div>
-    <div class="card"><h2>出血量の推移</h2><div class="hint">「出血」として記録した量だけを時系列で表示します。</div><div id="menstrualChartWrap" style="height:230px"><canvas id="menstrualChart" class="pure-canvas"></canvas></div><div id="menstrualChartEmpty" class="empty" style="display:none">出血量の記録が増えるとグラフが表示されます</div></div>
-    <div class="card"><details class="history-details"><summary>過去の月経・出血の記録を見る</summary><div class="history-body"><div id="menstrualHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div></details></div>
-    <div class="card"><details class="history-details"><summary>過去のおりもの記録を見る</summary><div class="history-body"><div id="dischargeHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div></details></div>
+    <div class="card"><h2>月経・出血</h2><div class="hint">開始・出血・終了を別々に記録できます。出血の量は時間に沿ってグラフ化できます。</div><button class="primary-btn" id="openMenstrualModal">＋ 月経・出血を記録</button></div>
+    <div class="card"><h2>おりもの</h2><button class="primary-btn" id="openDischargeModal">＋ おりものを記録</button></div>
+    <div class="card"><h2>出血量・おりもの量の推移</h2><div class="hint">赤＝出血量、水色＝おりもの量。両者の量の区分は異なるため、左右の目盛りを分けて表示しています。未記録の時刻は測定値ではありません。</div><div class="period-chart-legend" aria-label="グラフ凡例"><span><i class="period-legend-line bleed"></i>出血量（左目盛り）</span><span><i class="period-legend-line discharge"></i>おりもの量（右目盛り）</span></div><div id="menstrualChartWrap" style="height:260px"><canvas id="menstrualChart" class="pure-canvas" role="img" aria-label="出血量とおりもの量の時系列折れ線グラフ"></canvas></div><div id="menstrualChartEmpty" class="empty" style="display:none">出血量またはおりもの量を記録するとグラフが表示されます</div></div>
+    <div class="card local-history-source" hidden aria-hidden="true"><h2>月経・出血の履歴</h2><div id="menstrualHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
+    <div class="card local-history-source" hidden aria-hidden="true"><h2>おりものの履歴</h2><div id="dischargeHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
   </div>
 
   <!-- タブ4: 生活・体調 -->
@@ -543,7 +575,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
       <div style="display:none" aria-hidden="true"><button id="quickUrineStart">排尿開始</button><button id="quickUrineEnd">排尿終了</button><input id="quickWaterSlider" type="range"><input id="quickWaterNum" type="number" value="200"><span id="quickWaterLabel"></span><button id="quickWaterSave">保存</button><button id="openLifestyleModal">追加</button></div>
     </div>
     <div id="hydrationDailyTotal" hidden aria-hidden="true">今日：0ml</div>
-    <div class="card"><h2>生活の履歴</h2><div id="lifestyleHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
+    <div class="card local-history-source" hidden aria-hidden="true"><h2>生活の履歴</h2><div id="lifestyleHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
   </div>
 
   <div id="tab-measure" class="tab-content">
@@ -557,7 +589,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 
       </div>
       <div class="hint">測定項目の追加・編集は「設定」から行えます。</div>
-    </div><div class="card"><h2>測定履歴</h2><div id="measureHistory"></div></div>
+    </div><div class="card local-history-source" hidden aria-hidden="true"><h2>測定履歴</h2><div id="measureHistory"></div></div>
   </div>
   <!-- 測定専用の下から出る入力パネル：元データ形式を維持 -->
   <div class="modal-backdrop" id="measureBackdrop" role="dialog" aria-modal="true" aria-labelledby="measurePanelTitle">
@@ -580,7 +612,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
       <div class="breath-scene"><div class="breath-ball" id="breathBall"></div><div class="breath-label" id="breathLabel">スタートで開始</div></div>
       <div class="breath-control-grid"><div class="field"><label for="breathIn">吸う（秒）</label><input id="breathIn" type="number" min="2" max="20" step="1" value="4"></div><div class="field"><label for="breathHold">吸ったあと止める（秒）</label><input id="breathHold" type="number" min="0" max="20" step="1" value="2"></div><div class="field"><label for="breathOut">吐く（秒）</label><input id="breathOut" type="number" min="2" max="30" step="1" value="6"></div><div class="field"><label for="breathHoldAfter">吐いたあと止める（秒）</label><input id="breathHoldAfter" type="number" min="0" max="20" step="1" value="2"></div></div><div class="hint" id="breathCycleHint">吸う 4秒 → 止める 2秒 → 吐く 6秒 → 止める 2秒（1周14秒）。息止めは0秒にもできます。</div>
       <button class="primary-btn" id="breathToggle">呼吸ガイドを開始</button><div class="hint" id="breathElapsed"></div>
-    </div><div class="card"><h2>運動・呼吸の履歴</h2><div id="exerciseHistory"></div><div id="breathHistory"></div></div>
+    </div><div class="card local-history-source" hidden aria-hidden="true"><h2>運動・呼吸の履歴</h2><div id="exerciseHistory"></div><div id="breathHistory"></div></div>
   </div>
 
   <!-- タブ5: タイムライン -->
@@ -739,6 +771,14 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
     <div class="note">データはご利用のブラウザ（localStorage）内にのみ保存されます。アカウント登録・クラウド保存・広告・アクセス解析は行いません。</div>
   </div>
+<section class="unified-history-section" aria-label="すべての記録履歴">
+  <div class="card">
+    <h2>すべての記録履歴</h2>
+    <div class="hint">どの画面からも確認できます。記録を選ぶと内容や日時を編集できます。</div>
+    <div id="unifiedHistoryList" class="records-list"></div>
+    <button type="button" id="unifiedHistoryMore" class="ghost-btn" style="display:none;margin-top:12px">さらに50件表示</button>
+  </div>
+</section>
 <section class="footer-privacy"><div class="card" id="topPrivacyNotice" style="margin-bottom:14px">
   <h2>プライバシー</h2>
   <div class="hint">このアプリのデータはこの端末のブラウザ内にのみ保存されます。</div>
@@ -1880,7 +1920,6 @@ const BLEED_COLOR_LABELS=['淡いピンク','赤','濃い赤','茶色','その�
 const BLEED_TEXTURE_TAGS=['サラサラ','通常','粘り気あり','塊あり'];
 const BLEED_AMOUNT_X=[0,.25,.5,.75,1];
 const LEGACY_AMOUNT_X = {'ごく少量':.1,'少量':.3,'中等量':.6,'多量':.9};
-const LEGACY_AMOUNT_SCORE = {'ごく少量':.5,'少量':1,'中等量':2,'多量':3};
 const LEGACY_TEXTURE_Y = {'塊あり':.08,'粘り気あり':.28,'通常':.5,'サラサラ':.85};
 
 function nearestLabel(arr,v,key){ return arr.reduce((best,item)=>Math.abs(item[key]-v)<Math.abs(best[key]-v)?item:best,arr[0]).label; }
@@ -2046,7 +2085,7 @@ document.getElementById('disSave').addEventListener('click', () => {
   });
   saveData();
   dischargeBackdrop.classList.remove('open');
-  renderDischargeHistory(); renderTimeline(); renderTrend(); touchActive();
+  renderDischargeHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); touchActive();
 });
 function renderDischargeHistory(){
   const el = document.getElementById('dischargeHistoryList');
@@ -2061,7 +2100,7 @@ function renderDischargeHistory(){
     </div>`;
   }).join('');
   el.querySelectorAll('[data-del-dis]').forEach(b => {
-    b.addEventListener('click', () => { appData.dischargeEvents = appData.dischargeEvents.filter(r => r.id !== parseInt(b.getAttribute('data-del-dis'),10)); saveData(); renderDischargeHistory(); renderTimeline(); renderTrend(); });
+    b.addEventListener('click', () => { appData.dischargeEvents = appData.dischargeEvents.filter(r => r.id !== parseInt(b.getAttribute('data-del-dis'),10)); saveData(); renderDischargeHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); });
   });
 }
 
@@ -2105,25 +2144,65 @@ function renderCandidate(){
    出血量グラフ
 ========================================================= */
 function renderMenstrualChart(){
-  const canvas=document.getElementById('menstrualChart'), empty=document.getElementById('menstrualChartEmpty');
-  if(!canvas)return;
-  const data=appData.menstrualEvents.filter(r=>r.type==='出血').map(r=>{
-    const ax=bleedingAxes(r);
-    return {...r,plotAmount:ax.x};
-  }).filter(r=>r.plotAmount!=null).sort((a,b)=>a.startTs-b.startTs);
-  if(!data.length){canvas.style.display='none';document.getElementById('menstrualChartWrap').style.display='none';empty.style.display='block';return;}
-  document.getElementById('menstrualChartWrap').style.display='block';canvas.style.display='block';empty.style.display='none';
-  const rect=canvas.getBoundingClientRect(),W=Math.max(300,rect.width||400),H=230,dpr=window.devicePixelRatio||1;
-  canvas.width=W*dpr;canvas.height=H*dpr;const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-  const L=58,R=18,T=18,B=42,CW=W-L-R,CH=H-T-B,min=data[0].startTs,max=data[data.length-1].startTs,span=Math.max(1,max-min);
-  const x=t=>L+(t-min)/span*CW,y=v=>T+CH-v*CH;
-  ctx.font='11px sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
-  [0,.25,.5,.75,1].forEach(v=>{const yy=y(v);ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(W-R,yy);ctx.stroke();ctx.fillStyle='#475569';ctx.fillText(nearestLabel(BLEED_AMOUNT_LABELS,v,'x'),L-6,yy);});
-  ctx.strokeStyle='#ec4899';ctx.fillStyle='#ec4899';ctx.lineWidth=2.5;ctx.beginPath();
-  data.forEach((r,i)=>{const xx=x(r.startTs),yy=y(r.plotAmount);if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);});ctx.stroke();
-  data.forEach(r=>{const xx=x(r.startTs),yy=y(r.plotAmount);ctx.beginPath();ctx.arc(xx,yy,5,0,Math.PI*2);ctx.fill();});
-  ctx.textAlign='center';ctx.textBaseline='top';data.forEach((r,i)=>{if(i===0||i===data.length-1||data.length<=6){const d=new Date(r.startTs);ctx.fillStyle='#475569';ctx.fillText((d.getMonth()+1)+'/'+d.getDate()+' '+fmtTimeStr(r.startTs),x(r.startTs),H-B+8);}});
+  const canvas=document.getElementById('menstrualChart');
+  const empty=document.getElementById('menstrualChartEmpty');
+  const wrap=document.getElementById('menstrualChartWrap');
+  if(!canvas || !empty || !wrap)return;
+
+  // 既存のデータは変更せず、描画用の値だけ変換する。
+  // 出血量: 既存の5段階(0～1)。おりもの量: 4段階を0～1に正規化。
+  const bleeding=appData.menstrualEvents.filter(r=>r.type==='出血' && !r.bleedingNone).map(r=>{
+    const x = r.amountX !== null && r.amountX !== undefined && r.amountX !== '' && Number.isFinite(Number(r.amountX))
+      ? Number(r.amountX) : (LEGACY_AMOUNT_X[r.amount] ?? null);
+    return { ts:Number(r.startTs), value:x };
+  }).filter(r=>Number.isFinite(r.ts) && r.value != null && Number.isFinite(r.value) && r.value>=0 && r.value<=1)
+    .sort((a,b)=>a.ts-b.ts);
+  const dischargeScale={'ごく少量':0,'少量':1/3,'中等量':2/3,'多量':1};
+  const discharge=appData.dischargeEvents.map(r=>({ts:Number(r.startTs),value:dischargeScale[r.amount]}))
+    .filter(r=>Number.isFinite(r.ts)&&r.value!==undefined)
+    .sort((a,b)=>a.ts-b.ts);
+  const all=[...bleeding,...discharge];
+  if(!all.length){canvas.style.display='none';wrap.style.display='none';empty.style.display='block';return;}
+  wrap.style.display='block';canvas.style.display='block';empty.style.display='none';
+
+  const rect=canvas.getBoundingClientRect();
+  const W=Math.max(280,rect.width||360),H=260,dpr=Math.min(3,window.devicePixelRatio||1);
+  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+  const ctx=canvas.getContext('2d');if(!ctx)return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const L=58,R=69,T=18,B=43,CW=Math.max(1,W-L-R),CH=H-T-B;
+  const min=Math.min(...all.map(p=>p.ts)), max=Math.max(...all.map(p=>p.ts));
+  const span=Math.max(1,max-min);
+  const x=t=>L+((t-min)/span)*CW;
+  const y=v=>T+(1-v)*CH;
+  const bloodLabels=['少ない','やや少','中間','やや多','多い'];
+  const disLabels=['ごく少','少量','中等量','多量'];
+  ctx.font='10px sans-serif';ctx.textBaseline='middle';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach((v,i)=>{
+    const yy=y(v);ctx.strokeStyle='#475569';ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(W-R,yy);ctx.stroke();
+    ctx.textAlign='right';ctx.fillStyle='#fca5a5';ctx.fillText(bloodLabels[i],L-5,yy);
+  });
+  // 右側はおりもの固有の量区分。左側の出血量と同一の量を意味しない。
+  disLabels.forEach((label,i)=>{ctx.textAlign='left';ctx.fillStyle='#7dd3fc';ctx.fillText(label,W-R+7,y(i/3));});
+  const drawSeries=(points,color)=>{
+    if(!points.length)return;
+    ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.beginPath();
+    points.forEach((p,i)=>{if(i===0)ctx.moveTo(x(p.ts),y(p.value));else ctx.lineTo(x(p.ts),y(p.value));});
+    if(points.length>1)ctx.stroke();
+    points.forEach(p=>{ctx.beginPath();ctx.arc(x(p.ts),y(p.value),4,0,Math.PI*2);ctx.fill();});
+  };
+  drawSeries(bleeding,'#ef4444');
+  drawSeries(discharge,'#38bdf8');
+  ctx.fillStyle='#94a3b8';ctx.textAlign='center';ctx.textBaseline='top';ctx.font='10px sans-serif';
+  const ticks=min===max?[min]:[min,(min+max)/2,max];
+  ticks.forEach((ts,i)=>{
+    const d=new Date(ts);
+    const label=(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    let xx=x(ts);
+    if(i===0)xx=Math.max(L+30,xx);
+    if(i===ticks.length-1)xx=Math.min(W-R-30,xx);
+    ctx.fillText(label,xx,H-B+10);
+  });
 }
 
 /* =========================================================
@@ -2450,7 +2529,7 @@ function renderTimeline(){
         </summary>
         <div class="tl-detail-wrap">
           ${it.detail ? `<div class="tl-detail">${it.detail}</div>` : '<div class="tl-detail">詳細はありません</div>'}
-          <button type="button" class="ghost-btn tl-edit-btn" data-tl-edit-kind="${it.kind}" data-tl-edit-id="${it.ref.id}">${['measure','breath','exercise'].includes(it.kind)?'記録画面で確認':'この記録を編集'}</button>
+          <button type="button" class="ghost-btn tl-edit-btn" data-tl-edit-kind="${it.kind}" data-tl-edit-id="${it.ref.id}">この記録を編集</button>
         </div>
       </details>`;
     });
@@ -2470,12 +2549,11 @@ function renderTimeline(){
       else if(kind === 'symptom') openEditSymptom(id);
       else if(kind === 'nopain') openEditGeneric('noPainRecords', id, '痛みなしの記録');
       else if(kind === 'menstrual') openEditGeneric('menstrualEvents', id, '生理・出血の記録');
-      else if(kind === 'discharge') openEditGeneric('dischargeEvents', id, 'おりものの記録');
+      else if(kind === 'discharge'){const r=appData.dischargeEvents.find(x=>x.id===id);if(r)openDischargeEdit(r);}
       else if(kind === 'sleep') openEditGeneric('sleepEvents', id, '睡眠の記録');
       else if(kind === 'wellness') openEditGeneric('wellnessEvents', id, '調子が良かった時間の記録');
       else if(kind === 'lifestyle') openEditGeneric('lifestyleEvents', id, '生活・体調の記録');
-      else if(kind === 'measure')navigateTo('measure');
-      else if(kind === 'breath'||kind==='exercise')navigateTo('relax');
+      else if(kind === 'measure'||kind === 'breath'||kind === 'exercise')openExtraRecordEdit(kind,String(el.getAttribute('data-tl-edit-id')));
     });
   });
 }
@@ -2631,8 +2709,8 @@ function openEditGeneric(arrKey,id,title){
   document.getElementById('editTitle').textContent=title+'を編集';
   document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
   editBackdrop.classList.add('open');
-  document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();};
-  document.getElementById('editDelete').onclick=()=>{if(!confirm('この記録を削除しますか？'))return;appData[arrKey]=appData[arrKey].filter(x=>x.id!==id);saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();};
+  document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
+  document.getElementById('editDelete').onclick=()=>{if(!confirm('この記録を削除しますか？'))return;appData[arrKey]=appData[arrKey].filter(x=>x.id!==id);saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
 }
 
 /* =========================================================
@@ -3656,7 +3734,14 @@ function categoryOptions(kind){return `<div class="capture-choice-grid">${[['pai
 function partOptions(region){return `<div class="field"><label>大まかな部位</label><select id="captureRegion"><option value="">未設定</option>${availableCoarseParts().map(x=>`<option ${x===region?'selected':''}>${safeText(x)}</option>`).join('')}</select></div><div class="field"><label>詳しい部位（任意）</label><select id="captureDetail"></select></div>`;}
 function renderPartOptions(selected=''){const root=document.getElementById('captureRegion'),dest=document.getElementById('captureDetail');if(!root||!dest)return;const parts=availableDetails(root.value);dest.innerHTML='<option value="">大まかな部位だけで記録</option>'+parts.map(x=>`<option value="${safeText(x)}" ${selected===x?'selected':''}>${safeText(x)}</option>`).join('');}
 function captureForm(s){const kind=s.kind;let block=kind==='unknown'?`<div class="hint">記録の種類はあとから選べます。</div>${categoryOptions(kind)}`:'';
- if(kind==='pain')block+=partOptions(s.region)+`<div class="field"><label>痛みの強さ（0〜10、未設定可）</label><input id="captureLevel" type="range" min="0" max="10" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div></div>`;
+ if(kind==='pain'){
+  const faceOptions=[0,2,4,6,8,10];
+  const faceButtons=faceOptions.map(v=>{
+    const f=getFaceInfo(v);
+    return `<button type="button" class="capture-face-btn ${s.level===v?'selected':''}" data-capture-face="${v}" aria-label="痛みの強さ ${v}、${safeText(f.label)}" aria-pressed="${s.level===v}"><svg viewBox="0 0 24 24" aria-hidden="true">${f.svg}</svg><span>${v}</span></button>`;
+  }).join('');
+  block+=partOptions(s.region)+`<div class="field"><label>痛みの強さ（0〜10、未設定可）</label><div class="capture-faces">${faceButtons}</div><input id="captureLevel" type="range" min="0" max="10" step="1" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div><div class="hint">顔をタップ、またはスライダーから指を離すと、同じ強さの変化履歴に記録します。</div></div>`;
+ }
  if(kind==='symptom')block+=`<div class="field"><label>症状の種類</label><select id="captureSymptom"><option value="">未設定</option>${symptomCatalog.filter(x=>!x.hidden).map(x=>`<option value="${safeText(x.key)}" ${s.symptomKey===x.key?'selected':''}>${safeText(x.label)}</option>`).join('')}</select></div><div class="field"><label>強さ（0〜10、未設定可）</label><input id="captureLevel" type="range" min="0" max="10" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div></div>`;
  if(kind==='exercise')block+=`<div class="field"><label>運動メニュー</label><select id="captureExercise"><option value="">運動を選んでください</option>${exerciseDefinitions().filter(x=>!x.hidden||x.id===s.exerciseId).map(x=>`<option value="${safeText(x.id)}" ${s.exerciseId===x.id?'selected':''}>${safeText(x.name)}</option>`).join('')}</select></div>`;
  if(kind==='bath')block+=`<div class="field"><label>入浴方法</label><select id="captureBath"><option value="湯船" ${s.bathType==='湯船'?'selected':''}>湯船</option><option value="シャワー" ${s.bathType==='シャワー'?'selected':''}>シャワー</option></select></div>`;
@@ -3676,8 +3761,20 @@ function openCapture(id){const s=readQuick().find(x=>x.id===id);if(!s)return;edi
  const r=document.getElementById('captureRegion');if(r){r.onchange=()=>renderPartOptions();renderPartOptions(s.detail||'');}
  const ex=document.getElementById('captureExercise');if(ex)ex.onchange=()=>{if(!captureDetails())return;const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.exerciseId=ex.value||null;row.title=exerciseDefinitions().find(x=>x.id===row.exerciseId)?.name||null;if(storeQuick(rows)){drawQuick();openCapture(id);}}};
  const sl=document.getElementById('captureLevel');if(sl){
-  sl.oninput=()=>{document.getElementById('captureLevelValue').textContent=sl.value+'/10（指を離すと保存）';};
-  sl.addEventListener('change',()=>recordQuickLevel(id,sl.value));
+  const syncFaces=()=>{
+    document.querySelectorAll('[data-capture-face]').forEach(b=>{
+      const selected=Number(b.dataset.captureFace)===Number(sl.value);
+      b.classList.toggle('selected',selected);
+      b.setAttribute('aria-pressed',String(selected));
+    });
+  };
+  sl.oninput=()=>{document.getElementById('captureLevelValue').textContent=sl.value+'/10（指を離すと保存）';syncFaces();};
+  sl.addEventListener('change',()=>{recordQuickLevel(id,sl.value);syncFaces();});
+  document.querySelectorAll('[data-capture-face]').forEach(b=>b.onclick=()=>{
+    sl.value=b.dataset.captureFace;
+    sl.dispatchEvent(new Event('input',{bubbles:true}));
+    sl.dispatchEvent(new Event('change',{bubbles:true}));
+  });
  }
  document.getElementById('countOneRep')?.addEventListener('click',()=>incrementReps(1));
  document.getElementById('autoCountReps')?.addEventListener('click',toggleCountGuide);
@@ -3771,6 +3868,113 @@ document.getElementById('symptomManualEntry')?.addEventListener('click',()=>{ope
 renderMeasureDefinitions();renderMeasureButtons();renderExerciseDefinitions();renderExercises();drawQuick();renderIncomplete();
 
 showMeasurements();showBreathing();updateHome();
+
+/* =========================================================
+  v5.5 共通履歴: 編集画面・描画位置の統一
+  元の保存形式と保存キーは維持する。
+========================================================= */
+let unifiedHistoryVisible=50;
+function renderUnifiedHistory(){
+  const host=document.getElementById('unifiedHistoryList');
+  if(!host)return;
+  const events=buildTimelineEvents().filter(it=>Number.isFinite(Number(it.startTs)));
+  host.innerHTML=events.length?events.slice(0,unifiedHistoryVisible).map(it=>{
+    const subtitle=fmtDateStr(it.startTs)+' '+timeWithSeconds(it.startTs)+(it.endTs!=null?' ～ '+fmtDateStr(it.endTs)+' '+timeWithSeconds(it.endTs):'');
+    const id=String(it.ref?.id??'');
+    return `<div class="record-item"><div style="min-width:0;flex:1"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}</div><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button></div>`;
+  }).join(''):'<div class="empty">記録はありません</div>';
+  const more=document.getElementById('unifiedHistoryMore');
+  if(more)more.style.display=events.length>unifiedHistoryVisible?'block':'none';
+  host.querySelectorAll('[data-uh-kind]').forEach(b=>b.addEventListener('click',()=>openUnifiedHistoryEdit(b.dataset.uhKind,b.dataset.uhId)));
+}
+document.getElementById('unifiedHistoryMore')?.addEventListener('click',()=>{unifiedHistoryVisible+=50;renderUnifiedHistory();});
+function openUnifiedHistoryEdit(kind,id){
+  if(['measure','breath','exercise'].includes(kind))return openExtraRecordEdit(kind,id);
+  const entries={pain:['painRecords','pain'],symptom:['symptomEvents','symptom'],nopain:['noPainRecords','generic'],menstrual:['menstrualEvents','generic'],discharge:['dischargeEvents','discharge'],lifestyle:['lifestyleEvents','generic'],sleep:['sleepEvents','generic'],wellness:['wellnessEvents','generic']};
+  const spec=entries[kind];if(!spec)return;
+  const match=(appData[spec[0]]||[]).find(r=>String(r.id)===String(id));if(!match)return alert('記録が見つかりません。');
+  if(spec[1]==='pain')openEditPain(match.id);
+  else if(spec[1]==='symptom')openEditSymptom(match.id);
+  else if(spec[1]==='discharge')openDischargeEdit(match);
+  else openEditGeneric(spec[0],match.id,kind==='menstrual'?'月経・出血':kind==='nopain'?'痛みなし':kind==='lifestyle'?'生活':kind==='sleep'?'睡眠':'記録');
+}
+function openDischargeEdit(r){
+  const amountOpts=['ごく少量','少量','中等量','多量'];
+  const colorOpts=['透明','白色','黄色','黄緑','茶色','ピンク','赤','暗赤色','黒っぽい','その他'];
+  const stateOpts=['サラサラ','通常','粘り気あり','その他'];
+  const colors=Array.isArray(r.colorTags)?r.colorTags:String(r.color||'').split('・').filter(Boolean);
+  const states=Array.isArray(r.stateTags)?r.stateTags:String(r.state||'').split('・').filter(Boolean);
+  const select=(id,vals,selected,multi=false)=>`<div class="field"><label>${id==='ef_disAmount'?'量':id==='ef_disColor'?'色（複数選択可）':'状態（複数選択可）'}</label><div class="chip-select ${multi?'multi-select':''}" id="${id}">${vals.map(v=>`<button type="button" class="c ${selected.includes(v)?'active':''}" data-v="${safeText(v)}">${safeText(v)}</button>`).join('')}</div></div>`;
+  document.getElementById('editTitle').textContent='おりものの記録を編集';
+  document.getElementById('editFields').innerHTML=select('ef_disAmount',amountOpts,[r.amount||''])+select('ef_disColor',colorOpts,colors,true)+select('ef_disState',stateOpts,states,true)+editTimeFields(r,false)+`<div class="field"><label>メモ</label><textarea id="ef_note">${safeText(r.note||'')}</textarea></div>`;
+  ['ef_disAmount','ef_disColor','ef_disState'].forEach(key=>{
+    const host=document.getElementById(key);
+    host.querySelectorAll('.c').forEach(btn=>btn.addEventListener('click',()=>{
+      if(key==='ef_disAmount')host.querySelectorAll('.c').forEach(x=>x.classList.remove('active'));
+      btn.classList.toggle('active');
+    }));
+  });
+  editBackdrop.classList.add('open');
+  document.getElementById('editSave').onclick=()=>{
+    const st=editedTimestamp('ef_sdate','ef_stime',r.startTs);
+    if(!Number.isFinite(st)){alert('日付・時刻を確認してください');return;}
+    const values=(id)=>[...document.querySelectorAll('#'+id+' .c.active')].map(x=>x.dataset.v);
+    const amount=values('ef_disAmount')[0]||null,colorTags=values('ef_disColor'),stateTags=values('ef_disState');
+    if(!amount&&!colorTags.length&&!stateTags.length){alert('量・色・状態のどれかを選択してください');return;}
+    r.startTs=st;r.amount=amount;r.colorTags=colorTags;r.color=colorTags.join('・')||null;r.stateTags=stateTags;r.state=stateTags.join('・')||null;r.note=document.getElementById('ef_note').value;
+    saveData();closeEdit();renderDischargeHistory();renderMenstrualChart();renderTimeline();renderTrend();
+  };
+  document.getElementById('editDelete').onclick=()=>{
+    if(!confirm('この記録を削除しますか？'))return;
+    appData.dischargeEvents=appData.dischargeEvents.filter(x=>String(x.id)!==String(r.id));saveData();closeEdit();renderDischargeHistory();renderMenstrualChart();renderTimeline();renderTrend();
+  };
+}
+function openExtraRecordEdit(kind,id){
+  const key=kind==='measure'?MEASURE_KEY:kind==='breath'?BREATH_KEY:EXERCISE_LOG_KEY;
+  const rows=readExtra(key),r=rows.find(x=>String(x.id)===String(id));
+  if(!r)return alert('編集する記録が見つかりません。');
+  const field=(label,input)=>`<div class="field"><label>${label}</label>${input}</div>`;
+  document.getElementById('editTitle').textContent=(kind==='measure'?'身体測定':kind==='breath'?'呼吸ガイド':'運動')+'の記録を編集';
+  let body='';
+  if(kind==='measure')body+=field('測定項目',`<input type="text" id="ef_extraType" value="${safeText(r.type)}">`)+field('測定値',`<input type="text" id="ef_extraValue" value="${safeText(r.value)}">`)+field('単位',`<input type="text" id="ef_extraUnit" value="${safeText(r.unit||'')}">`);
+  if(kind==='exercise')body+=field('運動名',`<input type="text" id="ef_extraTitle" value="${safeText(r.title||'')}">`)+field('歩数（任意）',`<input type="number" min="0" step="1" id="ef_extraSteps" value="${r.steps??''}">`)+field('実施回数（任意）',`<input type="number" min="0" step="1" id="ef_extraReps" value="${r.repsDone??''}">`);
+  if(kind==='breath')body+=field('吸う（秒）',`<input type="number" min="0" max="120" id="ef_extraInhale" value="${r.inhale??4}">`)+field('吸ったあと止める（秒）',`<input type="number" min="0" max="120" id="ef_extraHold" value="${r.hold??0}">`)+field('吐く（秒）',`<input type="number" min="0" max="120" id="ef_extraExhale" value="${r.exhale??6}">`)+field('吐いたあと止める（秒）',`<input type="number" min="0" max="120" id="ef_extraHoldAfter" value="${r.holdAfter??0}">`);
+  body+=editTimeFields(r,kind!=='measure');
+  body+=field('メモ',`<textarea id="ef_note">${safeText(r.note||'')}</textarea>`);
+  document.getElementById('editFields').innerHTML=body;
+  editBackdrop.classList.add('open');
+  document.getElementById('editSave').onclick=()=>{
+    const st=editedTimestamp('ef_sdate','ef_stime',r.startTs),en=kind==='measure'?null:editedOptionalEnd('ef_edate','ef_etime',r.endTs);
+    if(!Number.isFinite(st)||(kind!=='measure'&&(en==null||!Number.isFinite(en)||en<st))){alert('開始・終了日時を確認してください');return;}
+    const changes={startTs:st,note:document.getElementById('ef_note').value};
+    if(kind!=='measure'){changes.endTs=en;changes.durationSec=Math.max(0,Math.round((en-st)/1000));}
+    if(kind==='measure'){
+      changes.type=document.getElementById('ef_extraType').value.trim();changes.value=document.getElementById('ef_extraValue').value.trim();changes.unit=document.getElementById('ef_extraUnit').value.trim();
+      if(!changes.type||changes.value===''){alert('測定項目と測定値を入力してください');return;}
+    }
+    if(kind==='exercise'){
+      changes.title=document.getElementById('ef_extraTitle').value.trim();if(!changes.title){alert('運動名を入力してください');return;}
+      for(const [prop,fieldId] of [['steps','ef_extraSteps'],['repsDone','ef_extraReps']]){const str=document.getElementById(fieldId).value;if(str!==''&&(!Number.isInteger(Number(str))||Number(str)<0)){alert('歩数・回数を確認してください');return;}changes[prop]=str===''?null:Number(str);}
+    }
+    if(kind==='breath'){
+      for(const [prop,fieldId] of [['inhale','ef_extraInhale'],['hold','ef_extraHold'],['exhale','ef_extraExhale'],['holdAfter','ef_extraHoldAfter']]){const num=Number(document.getElementById(fieldId).value);if(!Number.isInteger(num)||num<0||num>120){alert('呼吸の秒数を確認してください');return;}changes[prop]=num;}
+    }
+    const updated=rows.map(x=>String(x.id)===String(id)?{...x,...changes}:x);
+    if(!writeExtra(key,updated))return;
+    closeEdit();if(kind==='measure')showMeasurements();else if(kind==='breath')showBreathing();else renderExercises();renderTimeline();renderTrend();updateHome();renderUnifiedHistory();
+  };
+  document.getElementById('editDelete').onclick=()=>{
+    if(!confirm('この記録を削除しますか？'))return;
+    if(!writeExtra(key,rows.filter(x=>String(x.id)!==String(id))))return;
+    closeEdit();if(kind==='measure')showMeasurements();else if(kind==='breath')showBreathing();else renderExercises();renderTimeline();renderTrend();updateHome();renderUnifiedHistory();
+  };
+}
+// 保存処理の直後に共通履歴を更新（書き込みの成功判定は元の実装に委ねる）。
+const v55OriginalSaveData=saveData;
+saveData=function(...args){const result=v55OriginalSaveData(...args);setTimeout(renderUnifiedHistory,0);return result;};
+const v55OriginalWriteExtra=writeExtra;
+writeExtra=function(...args){const ok=v55OriginalWriteExtra(...args);if(ok)setTimeout(renderUnifiedHistory,0);return ok;};
+renderUnifiedHistory();
 </script>
 </body>
 </html>
