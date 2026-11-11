@@ -448,6 +448,10 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 .body-region-picker .picker-footer{padding:12px;border-top:1px solid var(--border);background:var(--card);display:grid;gap:8px}
 .body-region-picker .picker-footer button{min-height:48px}
 .bodymap-legend{color:var(--muted);font-size:12px;text-align:center;margin:10px 0}
+@media print {#doctorFallbackClose,#doctorFallbackPrint{display:none!important}}
+#doctorFallbackClose{color:#fff!important;background:#334155!important;-webkit-text-fill-color:#fff!important}
+#unifiedLegacySessions:empty{display:none}
+#captureActiveGlobal .capture-session{margin:12px 0}
 </style>
 </head>
 <body>
@@ -455,7 +459,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
   <h1>health-timeline</h1>
 <section class="global-start" aria-label="緊急記録">
   <button type="button" id="globalInstantStart" class="global-start-button">▶ 今すぐ記録を開始<span>種類や詳細はあとから選べます</span></button>
-  <div id="captureActiveGlobal"></div>
+  <div id="captureActiveGlobal" aria-live="polite"></div><div id="unifiedLegacySessions"></div>
 </section>
   <div id="candidateHolder"></div>
 
@@ -485,7 +489,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
   <div id="tab-record" class="tab-content">
     <div class="card">
       <h2>痛む部位を選択</h2><button type="button" class="primary-btn" data-start-capture="pain" style="margin-bottom:12px;background:#059669">▶ 部位を選ぶ前に開始</button>
-      <div class="hint">部位をタップすると直下に記録操作が表示されます。バーを動かすと記録開始、終了ボタンで確定します。</div>
+      <div class="hint">身体図から部位を選ぶと、上部の共通「記録中」欄に追加されます。強さの変化はスライダーから指を離すたびに保存します。</div>
       <div class="view-toggle">
         <button id="btnFront" class="active">表側</button>
         <button id="btnBack">裏側</button>
@@ -497,26 +501,19 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <button class="add-manual-btn" id="openManualPain">＋ 痛みの記録を手動で追加</button>
     <button class="add-manual-btn" id="openNoPain">＋ 痛みなしを記録（あとから追加も可）</button>
 
-    <details class="history-details">
-      <summary>過去の痛みの記録を見る</summary>
-      <div class="history-body"><div id="recordsList" class="records-list"><div class="empty">まだ記録がありません</div></div></div>
-    </details>
+    <div class="card"><h2>痛みの履歴</h2><div id="recordsList" class="records-list"><div class="empty">まだ記録がありません</div></div></div>
   </div>
 
   <!-- タブ2: 全身症状 -->
   <div id="tab-other" class="tab-content">
     <div class="card">
       <h2>症状を記録</h2><button type="button" class="primary-btn" data-start-capture="symptom" style="margin-bottom:12px;background:#059669">▶ 症状を選ぶ前に開始</button>
-      <div class="hint">だるさ・吐き気・お腹の張りなどは、強さを0〜10のバーで記録し、途中の変化と終了時刻まで残せます。過去の記録では終了日時も入力できます。発熱は体温を記録します。</div>
-      <div class="hint" style="margin-top:10px">症状を選ぶと、程度や詳細を入力できます。</div>
-      <div id="symptomQuickChoices" class="symptom-quick-choices"></div>
+      <div class="hint">症状をタップするとその時点から記録開始。上部の「記録中」で強さを変更すると、波の変化が時刻とともに残ります。過去の記録は下の履歴から編集できます。</div>
+      <div id="symptomQuickChoices" class="symptom-quick-choices"></div><button type="button" class="ghost-btn" id="symptomManualEntry" style="margin-top:14px">＋ 過去の症状を手動で入力</button>
 
     </div>
     <div id="activeSymptomPanel"></div>
-    <details class="history-details">
-      <summary>過去の症状の記録を見る</summary>
-      <div class="history-body"><div id="symptomHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
-    </details>
+    <div class="card"><h2>症状の履歴</h2><div id="symptomHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
   </div>
 
   <!-- タブ3: 月経・出血・おりもの -->
@@ -542,14 +539,11 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
         <button type="button" class="life-launch" data-life-open="入浴"><span class="life-emoji">🛁</span><strong>入浴</strong><small>湯船・シャワー</small></button>
         <button type="button" class="life-launch" data-life-open="服薬"><span class="life-emoji">💊</span><strong>お薬</strong><small>登録した薬を選択</small></button>
       </div>
-      <div id="captureActiveLife"></div><div id="quickUrineStatus" class="hint" style="margin-top:12px">排尿の記録は開始前です</div>
+      <div id="quickUrineStatus" hidden aria-hidden="true"></div>
       <div style="display:none" aria-hidden="true"><button id="quickUrineStart">排尿開始</button><button id="quickUrineEnd">排尿終了</button><input id="quickWaterSlider" type="range"><input id="quickWaterNum" type="number" value="200"><span id="quickWaterLabel"></span><button id="quickWaterSave">保存</button><button id="openLifestyleModal">追加</button></div>
     </div>
-    <div class="card"><h2>水分補給の合計</h2><div id="hydrationDailyTotal" class="hint">今日：0ml</div></div>
-    <details class="history-details">
-      <summary>過去の生活記録を見る</summary>
-      <div class="history-body"><div id="lifestyleHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
-    </details>
+    <div id="hydrationDailyTotal" hidden aria-hidden="true">今日：0ml</div>
+    <div class="card"><h2>生活の履歴</h2><div id="lifestyleHistoryList" class="records-list"><div class="empty">記録はありません</div></div></div>
   </div>
 
   <div id="tab-measure" class="tab-content">
@@ -581,7 +575,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
   </div>
   <div id="tab-relax" class="tab-content">
-    <div class="card"><h2>運動メニュー</h2><div class="hint">ウォーキングは開始・終了で計測し、歩数は終了後に入力。その他の運動は設定から登録できます。</div><div id="exerciseMenu"></div><div id="captureActiveExercise"></div></div>
+    <div class="card"><h2>運動メニュー</h2><div class="hint">ウォーキングは開始・終了で計測し、歩数は終了後に入力。その他の運動は設定から登録できます。</div><div id="exerciseMenu"></div></div>
     <div class="card"><h2>呼吸ガイド（4段階）</h2><div class="hint">無理のないペースで行ってください。いつでも中止できます。</div>
       <div class="breath-scene"><div class="breath-ball" id="breathBall"></div><div class="breath-label" id="breathLabel">スタートで開始</div></div>
       <div class="breath-control-grid"><div class="field"><label for="breathIn">吸う（秒）</label><input id="breathIn" type="number" min="2" max="20" step="1" value="4"></div><div class="field"><label for="breathHold">吸ったあと止める（秒）</label><input id="breathHold" type="number" min="0" max="20" step="1" value="2"></div><div class="field"><label for="breathOut">吐く（秒）</label><input id="breathOut" type="number" min="2" max="30" step="1" value="6"></div><div class="field"><label for="breathHoldAfter">吐いたあと止める（秒）</label><input id="breathHoldAfter" type="number" min="0" max="20" step="1" value="2"></div></div><div class="hint" id="breathCycleHint">吸う 4秒 → 止める 2秒 → 吐く 6秒 → 止める 2秒（1周14秒）。息止めは0秒にもできます。</div>
@@ -699,7 +693,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
  <div id="regionManagerList"></div>
  </details>
  <details class="settings-preset-panel" id="measureManager"><summary>🌡️ 身体測定項目の登録・管理</summary><div class="field"><label>測定項目名</label><input id="newMeasureName" maxlength="40" placeholder="例：腹囲"></div><div class="field"><label>単位</label><input id="newMeasureUnit" maxlength="20" placeholder="例：cm"></div><button class="primary-btn" id="addMeasureDef">測定項目を追加する</button><div id="measureDefList"></div></details>
-      <details class="settings-preset-panel" id="exerciseManager"><summary>🏃 運動メニューの登録・管理</summary><div class="field"><label>運動名</label><input id="newExerciseName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>形式</label><select id="newExerciseMode"><option value="reps">回数ガイド</option><option value="timer">時間計測</option></select></div><div class="field"><label>目標回数（回数ガイドの場合）</label><input id="newExerciseReps" type="number" min="1" max="1000" value="30"></div><div class="field"><label>1回の動作時間（秒）</label><input id="newExerciseSeconds" type="number" min="1" max="60" value="3"></div><button class="primary-btn" id="addExerciseDef">運動を登録する</button><div id="exerciseDefList"></div></details><div class="hint">飲み物・常備薬はここで登録します。日々の記録画面では選ぶだけで入力できます。登録を削除しても過去の記録は残ります。</div>
+      <details class="settings-preset-panel" id="exerciseManager"><summary>🏃 運動メニューの登録・管理</summary><div class="field"><label>運動名</label><input id="newExerciseName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>形式</label><select id="newExerciseMode"><option value="reps">回数ガイド</option><option value="timer">時間計測</option></select></div><div class="field"><label>目標回数（回数ガイドの場合）</label><input id="newExerciseReps" type="number" min="1" max="1000" value="30"></div><div class="field"><label>1回の動作時間（秒）</label><input id="newExerciseSeconds" type="number" min="1" max="60" value="3"></div><button class="primary-btn" id="addExerciseDef">運動を登録する</button><div id="exerciseDefList"></div></details>
       <details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
         <div id="drinkPresetList"></div>
         <div class="field"><label for="drinkPresetName">飲み物の名前</label><input id="drinkPresetName" maxlength="100" placeholder="例：オリーブオイルはちみつレモン"></div>
@@ -995,9 +989,9 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 <!-- 診察用サマリー ポップアップ代替表示 -->
 <div id="doctorFallbackOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;padding:env(safe-area-inset-top,12px) 0 env(safe-area-inset-bottom,0);">
   <div style="height:100%;background:#fff;display:flex;flex-direction:column;">
-    <div style="padding:10px;border-bottom:1px solid #ddd;display:flex;justify-content:flex-end;gap:8px;">
+    <div style="padding:10px 12px;border-bottom:1px solid #ddd;display:flex;justify-content:flex-end;gap:8px;position:sticky;top:0;z-index:3;background:#fff;flex-wrap:wrap;">
       <button id="doctorFallbackPrint" style="padding:8px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;">印刷 / PDF</button>
-      <button id="doctorFallbackClose" style="padding:8px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;">閉じる</button>
+      <button id="doctorFallbackClose" style="padding:8px 12px;border:2px solid #334155;border-radius:8px;background:#334155;color:#ffffff!important;font-weight:700;min-height:44px;">← アプリに戻る</button>
     </div>
     <iframe id="doctorFallbackFrame" title="診察用サマリー" style="border:0;width:100%;flex:1;background:#fff;"></iframe>
   </div>
@@ -1096,7 +1090,7 @@ function fmtTimeStr(ts){ const d=new Date(ts); return pad2(d.getHours())+':'+pad
 function fmtJp(ts){ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes()); }
 function fmtDayHeader(ts){ const d=new Date(ts); const w=['日','月','火','水','木','金','土'][d.getDay()]; return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+w+'）'; }
 function fmtDur(sec){ if(sec==null) return ''; sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; if(h>0) return h+'時間'+m+'分'; if(m>0) return m+'分'+s+'秒'; return s+'秒'; }
-function tsFromInputs(dateStr,timeStr){ if(!dateStr||!timeStr) return null; const normalized=/^\d{2}:\d{2}$/.test(timeStr)?timeStr+':00':timeStr; return new Date(dateStr+'T'+normalized).getTime(); }
+function tsFromInputs(dateStr,timeStr){ if(!dateStr||!timeStr) return NaN; const normalized=/^\d{2}:\d{2}$/.test(timeStr)?timeStr+':00':timeStr; if(!/^\d{2}:\d{2}:\d{2}$/.test(normalized))return NaN; const [h,m,sec]=normalized.split(':').map(Number);if(h>23||m>59||sec>59)return NaN; const ts=new Date(dateStr+'T'+normalized).getTime();return Number.isFinite(ts)?ts:NaN; }
 function timeWithSeconds(ts){ if(ts==null || !Number.isFinite(Number(ts)))return ''; const d=new Date(ts);return pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
 function editedTimestamp(dateId,timeId,original){
  const de=document.getElementById(dateId),ti=document.getElementById(timeId);
@@ -1277,12 +1271,10 @@ function openBodyRegionPicker(region){
 }
 function confirmBodyRegionPicker(detail){
  const key=currentBodyRegion;if(!key)return;
- if(!activeSessions[key])addActiveRegion(key);
- // 詳細は従来のregion文字列と分けて保持し、既存の集計・フィルタへの影響を小さくする。
- activeSessions[key].detail=detail||'';
- persistActivePainSessions();
- renderActivePanel();renderBodyMap();closeBodyRegionPicker();
- document.getElementById('activePanel')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+ // 新規開始は「今すぐ記録」と同じ永続化処理に統一する。既存の記録中セッションは維持する。
+ closeBodyRegionPicker();
+ startQuick('pain',null,{region:key,detail:detail||''});
+ renderBodyMap();
 }
 function closeBodyRegionPicker(){document.getElementById('bodyRegionPicker').classList.remove('open');currentBodyRegion='';}
 document.getElementById('bodyRegionPickerClose').onclick=closeBodyRegionPicker;
@@ -1523,7 +1515,7 @@ function renderRecordsList(){
             <b>${safeText(r.region)}${r.detail?'・'+safeText(r.detail):''}</b>
             <span style="font-size:12px;color:${face.color}">${face.label} (${r.level})</span>${tagHtml}
           </div>
-          <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}〜${fmtTimeStr(r.endTs)}</div>
+          <div class="meta">${fmtDateStr(r.startTs)} ${timeWithSeconds(r.startTs)}〜${r.endTs!=null?timeWithSeconds(r.endTs):"継続中"}${r.note?" ／ メモ："+safeText(r.note):""}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
@@ -1719,9 +1711,7 @@ function renderSymptomQuickChoices(){
   const host=document.getElementById('symptomQuickChoices'); if(!host)return;
   host.innerHTML=GENERAL_SYMPTOMS.map(sym=>`<button type="button" class="symptom-quick-choice" data-symptom-key="${sym.key}">${sym.label}</button>`).join('');
   host.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{
-    openSymptomModal();
-    const chip=[...document.querySelectorAll('#symptomChipGrid .symptom-chip')].find(x=>x.dataset.key===btn.dataset.symptomKey);
-    if(chip) chip.click();
+    startQuick('symptom',null,{symptomKey:btn.dataset.symptomKey});
   }));
 }
 renderSymptomQuickChoices();
@@ -2304,7 +2294,7 @@ function buildTimelineEvents(){
   }));
   // 新しい保存領域は既存データへ混ぜず、表示時だけ統合する。
   if(typeof getMeasurements==='function')getMeasurements().forEach(r=>items.push({kind:'measure',startTs:r.startTs,endTs:null,icon:'🌡️',iconBg:'#0e7490',title:'身体測定：'+r.type,detail:String(r.value)+' '+(r.unit||'')+(r.note?' ／ '+r.note:''),ref:r}));
-  if(typeof readExtra==='function')readExtra('healthTimelineExerciseHistory_v1').forEach(r=>items.push({kind:'exercise',startTs:r.startTs,endTs:r.endTs,icon:'🏃',iconBg:'#047857',title:r.title||'運動',detail:(r.steps!=null?r.steps+'歩 / ':'')+fmtDur(r.durationSec),ref:r}));
+  if(typeof readExtra==='function')readExtra('healthTimelineExerciseHistory_v1').forEach(r=>items.push({kind:'exercise',startTs:r.startTs,endTs:r.endTs,icon:'🏃',iconBg:'#047857',title:r.title||'運動',detail:(r.steps!=null?r.steps+'歩 / ':'')+fmtDur(r.durationSec)+(r.note?' ／ '+r.note:''),ref:r}));
   if(typeof getBreathing==='function')getBreathing().forEach(r=>items.push({kind:'breath',startTs:r.startTs,endTs:r.endTs,icon:'🌬️',iconBg:'#4f46e5',title:'呼吸ガイド',detail:'実施時間 '+fmtDur(r.durationSec),ref:r}));
   return items.sort((a,b) => b.startTs - a.startTs);
 }
@@ -2540,7 +2530,7 @@ const editBackdrop = document.getElementById('editBackdrop');
 function closeEdit(){ editBackdrop.classList.remove('open'); }
 document.getElementById('editCancel').addEventListener('click', closeEdit);
 
-function editTimeFields(r,showEnd=true){return `<div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻（秒）</label><input type="time" step="1" id="ef_stime" value="${timeWithSeconds(r.startTs)}"></div></div>${showEnd?`<div class="field-row"><div class="field"><label>終了日（任意）</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻（秒・任意）</label><input type="time" step="1" id="ef_etime" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div>`:''}`;}
+function editTimeFields(r,showEnd=true){return `<div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻（秒）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" step="1" id="ef_stime" value="${timeWithSeconds(r.startTs)}"></div></div>${showEnd?`<div class="field-row"><div class="field"><label>終了日（任意）</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻（秒・任意）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" step="1" id="ef_etime" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div>`:''}`;}
 function openEditPain(id){
  const r=appData.painRecords.find(x=>x.id===id);if(!r)return;
  document.getElementById('editTitle').textContent='痛みの記録を編集';
@@ -2577,7 +2567,7 @@ function openEditGeneric(arrKey,id,title){
   if(arrKey==='lifestyleEvents'){
     document.getElementById('editTitle').textContent=title+'を編集';
     const bs=Array.isArray(r.bowelStates)?r.bowelStates:(r.bowelState?String(r.bowelState).split('・').filter(Boolean):[]);
-    document.getElementById('editFields').innerHTML=`<div class="field"><label>種類</label><select id="ef_lifeType">${['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り',...(r.type&&!['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り'].includes(r.type)?[r.type]:[])].map(v=>`<option value="${v}" ${r.type===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻</label><input type="time" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field-row" id="ef_urineEndRow"><div class="field"><label>終了日</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻</label><input type="time" id="ef_etime" step="1" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div><div class="field" id="ef_lifeLevelWrap" style="display:${r.type==='お腹の張り'?'':'none'}"><label>お腹の張り（0〜10）</label><input type="range" class="pain-slider" id="ef_lifeLevel" min="0" max="10" value="${r.level??0}"><div id="ef_lifeLevelLabel" style="text-align:center;font-weight:700">${r.level??0}/10</div></div><div class="field" id="ef_lifeMealWrap"><label>食事量</label><select id="ef_lifeMeal">${mealAmountLabels.map(v=>`<option ${r.mealAmount===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field" id="ef_lifeMedicationWrap"><label>薬の名前</label><input id="ef_lifeMedicationName" value="${r.medicationName||''}"><label>服用量</label><input id="ef_lifeMedicationDose" value="${r.medicationDose||''}"></div><div class="field" id="ef_lifeWaterWrap"><label>飲み物・量</label><select id="ef_lifeDrink"><option>水</option><option>お茶</option><option>コーヒー</option><option>その他</option></select><input type="number" id="ef_lifeWater" min="0" max="5000" value="${r.amountMl??200}"> ml</div><div class="field" id="ef_lifeBowelWrap"><label>便の見た目（複数選択可）</label><div class="bowel-matrix-wrap"><div class="bowel-grid" id="efLifeBowelMatrix"></div><div class="bowel-matrix-value" id="efLifeBowelValue">必要な組み合わせを選択してください</div></div><div class="bleeding-matrix-hint">形が変わった場合は、当てはまるものを複数選択できます。⑥は泥状、⑦は水のような便です。</div><div class="chip-select multi-select" id="efLifeBowelColors"></div><label><input type="checkbox" id="efLifeBowelBlood"> 血液が混じっている／血液のように見える</label></div><div class="field"><label>内容・気づいたこと</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
+    document.getElementById('editFields').innerHTML=`<div class="field"><label>種類</label><select id="ef_lifeType">${['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り',...(r.type&&!['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り'].includes(r.type)?[r.type]:[])].map(v=>`<option value="${v}" ${r.type===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field-row" id="ef_urineEndRow"><div class="field"><label>終了日</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_etime" step="1" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div><div class="field" id="ef_lifeLevelWrap" style="display:${r.type==='お腹の張り'?'':'none'}"><label>お腹の張り（0〜10）</label><input type="range" class="pain-slider" id="ef_lifeLevel" min="0" max="10" value="${r.level??0}"><div id="ef_lifeLevelLabel" style="text-align:center;font-weight:700">${r.level??0}/10</div></div><div class="field" id="ef_lifeMealWrap"><label>食事量</label><select id="ef_lifeMeal">${mealAmountLabels.map(v=>`<option ${r.mealAmount===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field" id="ef_lifeMedicationWrap"><label>薬の名前</label><input id="ef_lifeMedicationName" value="${r.medicationName||''}"><label>服用量</label><input id="ef_lifeMedicationDose" value="${r.medicationDose||''}"></div><div class="field" id="ef_lifeWaterWrap"><label>飲み物・量</label><select id="ef_lifeDrink"><option>水</option><option>お茶</option><option>コーヒー</option><option>その他</option></select><input type="number" id="ef_lifeWater" min="0" max="5000" value="${r.amountMl??200}"> ml</div><div class="field" id="ef_lifeBowelWrap"><label>便の見た目（複数選択可）</label><div class="bowel-matrix-wrap"><div class="bowel-grid" id="efLifeBowelMatrix"></div><div class="bowel-matrix-value" id="efLifeBowelValue">必要な組み合わせを選択してください</div></div><div class="bleeding-matrix-hint">形が変わった場合は、当てはまるものを複数選択できます。⑥は泥状、⑦は水のような便です。</div><div class="chip-select multi-select" id="efLifeBowelColors"></div><label><input type="checkbox" id="efLifeBowelBlood"> 血液が混じっている／血液のように見える</label></div><div class="field"><label>内容・気づいたこと</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
     editBackdrop.classList.add('open');
     const sync=()=>{const t=document.getElementById('ef_lifeType').value;document.getElementById('ef_lifeLevelWrap').style.display=t==='お腹の張り'?'':'none';document.getElementById('ef_lifeMealWrap').style.display=t==='食事'?'':'none';document.getElementById('ef_lifeBowelWrap').style.display=t==='排便'?'':'none';document.getElementById('ef_lifeMedicationWrap').style.display=t==='服薬'?'':'none';document.getElementById('ef_lifeWaterWrap').style.display=t==='水分補給'?'':'none';document.getElementById('ef_urineEndRow').style.display=t==='排尿'?'':'none';};
     sync();
@@ -2590,7 +2580,7 @@ function openEditGeneric(arrKey,id,title){
       const t=document.getElementById('ef_lifeType').value; let en=st;
       if(t==='排尿'){en=editedOptionalEnd('ef_edate','ef_etime',r.endTs);if(en===null||!Number.isFinite(en)||en<st){alert('終了日時を確認してください');return;}}
       const previousType=r.type;const previousDuration=Number(r.durationSec)||0;
-      const unchangedUrineInterval=previousType==='排尿'&&t==='排尿'&&document.getElementById('ef_sdate').value===fmtDateStr(r.startTs)&&document.getElementById('ef_stime').value===fmtTimeStr(r.startTs)&&document.getElementById('ef_edate').value===fmtDateStr(r.endTs||r.startTs)&&document.getElementById('ef_etime').value===r.endTs!=null?timeWithSeconds(r.endTs):'';
+      const unchangedUrineInterval=previousType==='排尿'&&t==='排尿'&&document.getElementById('ef_sdate').value===fmtDateStr(r.startTs)&&document.getElementById('ef_stime').value===timeWithSeconds(r.startTs)&&document.getElementById('ef_edate').value===fmtDateStr(r.endTs||r.startTs)&&document.getElementById('ef_etime').value===(r.endTs!=null?timeWithSeconds(r.endTs):'');
       r.type=t;r.startTs=st;if(t==='排尿'){r.endTs=en;r.durationSec=unchangedUrineInterval?previousDuration:Math.max(1,Math.round((en-st)/1000));}else if(previousType==='排尿'){delete r.endTs;delete r.durationSec;}if(t==='お腹の張り')r.level=parseInt(document.getElementById('ef_lifeLevel').value,10)||0;else if(previousType==='お腹の張り')delete r.level;if(t==='食事')r.mealAmount=document.getElementById('ef_lifeMeal').value;else if(previousType==='食事')delete r.mealAmount;
       if(t==='排便'){r.bowelSelections=editBowelSelections.map(x=>({...x}));r.bowelStates=[];r.bowelState=r.bowelSelections.length?r.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):(bs.join('・')||null);}else if(previousType==='排便'){delete r.bowelSelections;delete r.bowelStates;delete r.bowelState;}
       if(t==='食事')r.mealAmount=document.getElementById('ef_lifeMeal').value;
@@ -2615,7 +2605,7 @@ function openEditGeneric(arrKey,id,title){
         </div>
         <div class="field"><label>質（複数選択可）</label><div class="chip-select multi-select" id="ef_mtexture">${BLEED_TEXTURE_TAGS.map(v=>`<div class="c ${existingTextures.includes(v)?'active':''}" data-v="${v}">${v}</div>`).join('')}</div></div>
       </div>
-      <div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="time" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div>
+      <div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div>
       <div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
     let editMen={x:ax.x,color:r.color||null,textures:[...existingTextures],none:!!r.bleedingNone};
     const cells=document.getElementById('efBleedingCells');
@@ -2639,7 +2629,7 @@ function openEditGeneric(arrKey,id,title){
     return;
   }
   document.getElementById('editTitle').textContent=title+'を編集';
-  document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="time" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
+  document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
   editBackdrop.classList.add('open');
   document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();};
   document.getElementById('editDelete').onclick=()=>{if(!confirm('この記録を削除しますか？'))return;appData[arrKey]=appData[arrKey].filter(x=>x.id!==id);saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();};
@@ -2763,7 +2753,8 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
     if(!a||!b||a>b){alert('期間指定の日付を確認してください。開始日は終了日以前にしてください。');return;}
     selectedDoctorCustomRange={start:new Date(a+'T00:00:00').getTime(),end:new Date(b+'T23:59:59').getTime()};
   }
-  const win = window.open('', '_blank');
+  // ホーム画面から起動したPWAでも戻れるよう、同一画面の閉じられるオーバーレイを使用する。
+  const win = null;
 
   const allDates=[...buildTimelineEvents().map(x=>Number(x.startTs)).filter(Number.isFinite)];
   const latestReport=allDates.length?Math.max(...allDates):Date.now();
@@ -3059,9 +3050,11 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
   const frame = document.getElementById('doctorFallbackFrame');
   frame.srcdoc = htmlContent;
   overlay.style.display = 'block';
+  document.body.style.overflow = 'hidden';
   document.getElementById('doctorFallbackClose').onclick = () => {
     frame.srcdoc = '';
     overlay.style.display = 'none';
+    document.body.style.overflow = '';
   };
   document.getElementById('doctorFallbackPrint').onclick = () => {
     try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){}
@@ -3622,17 +3615,41 @@ refreshRegionChoices();
 function readQuick(){return readExtra(QUICK_SESSIONS_KEY);}
 function storeQuick(rows){return writeExtra(QUICK_SESSIONS_KEY,rows);}
 function elapsedClock(ms){const sec=Math.max(0,Math.floor(ms/1000));return String(Math.floor(sec/3600)).padStart(2,'0')+':'+String(Math.floor(sec%3600/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');}
-function quickLabel(s){return s.title||({pain:'痛み',symptom:'症状',urine:'排尿',walk:'ウォーキング',exercise:'運動',sleep:'睡眠',bath:'入浴',unknown:'種類未設定'}[s.kind]||'記録');}
-function startQuick(kind='unknown',exerciseId=null){
+function quickLabel(s){
+ if(s.kind==='pain'&&s.region)return s.region+(s.detail?'・'+s.detail:'')+'の痛み';
+ if(s.kind==='symptom'&&s.symptomKey)return symptomCatalog.find(x=>x.key===s.symptomKey)?.label||s.symptomKey;
+ return s.title||({pain:'痛み',symptom:'症状',urine:'排尿',walk:'ウォーキング',exercise:'運動',sleep:'睡眠',bath:'入浴',unknown:'種類未設定'}[s.kind]||'記録');
+}
+function startQuick(kind='unknown',exerciseId=null,preset={}){
  if(dataLoadFailed){alert('既存データを読み込めないため記録を開始できません');return;}
  const now=Date.now();const rows=readQuick(),kindDef=(readExtra(EXERCISE_DEFS_KEY).find(r=>r.id===exerciseId));
- const s={id:'Q'+now+'_'+Math.random().toString(36).slice(2,8),kind,exerciseId:exerciseId||null,title:kindDef?.name||(kind==='walk'?'ウォーキング':null),startTs:now,endTs:null,region:'',detail:'',level:null,steps:null,note:'',repsDone:0};
+ const s={id:'Q'+now+'_'+Math.random().toString(36).slice(2,8),kind,exerciseId:exerciseId||null,title:kindDef?.name||(kind==='walk'?'ウォーキング':null),startTs:now,endTs:null,region:'',detail:'',level:null,steps:null,note:'',repsDone:0,points:[],...preset};
  rows.push(s);if(!storeQuick(rows))return;drawQuick();openCapture(s.id);
 }
-function drawQuick(){const sessions=readQuick().filter(s=>!s.endTs);const html=sessions.length?sessions.map(s=>`<div class="capture-session"><b>${safeText(quickLabel(s))}</b><div class="elapsed" data-elapsed-start="${s.startTs}">${elapsedClock(Date.now()-s.startTs)}</div><div class="hint">開始：${fmtDateStr(s.startTs)} ${timeWithSeconds(s.startTs)}　詳細${s.kind==='unknown'?'未設定':'はあとから変更可'}</div><button class="ghost-btn" data-quick-open="${safeText(s.id)}">詳細を入力</button><button class="primary-btn" style="background:#b91c1c" data-quick-stop="${safeText(s.id)}">終了時刻を記録</button></div>`).join(''):'<div class="hint">現在、計測中の記録はありません。</div>';
- ['captureActiveGlobal','captureActiveLife','captureActiveExercise'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
- document.querySelectorAll('[data-quick-open]').forEach(b=>b.onclick=()=>openCapture(b.dataset.quickOpen));
- document.querySelectorAll('[data-quick-stop]').forEach(b=>b.onclick=()=>stopQuick(b.dataset.quickStop));
+// 時刻と強さの変化を「開始場所によらず」同じ計測中データに保持する。
+function recordQuickLevel(id,raw){
+ const rows=readQuick(),s=rows.find(x=>x.id===id);if(!s||s.endTs!=null||!['pain','symptom'].includes(s.kind))return;
+ const level=Number(raw);if(!Number.isInteger(level)||level<0||level>10)return;
+ const points=Array.isArray(s.points)?s.points:(s.points=[]);
+ if(points.length&&points[points.length-1].level===level)return;
+ const now=Date.now();points.push({ts:now,level});s.level=level;
+ if(storeQuick(rows))drawQuick();
+}
+function drawQuick(){
+ const sessions=readQuick().filter(s=>!s.endTs);
+ const html=sessions.length?sessions.map(s=>{
+  const points=Array.isArray(s.points)?s.points:[];
+  const meter=['pain','symptom'].includes(s.kind)?`<div class="field" style="margin:12px 0"><label>現在の強さ：<b data-quick-level-label="${safeText(s.id)}">${s.level==null?'未設定':s.level+' / 10'}</b></label><input type="range" class="pain-slider" min="0" max="10" step="1" value="${s.level??0}" data-quick-level="${safeText(s.id)}"><div class="hint">指を離すと時刻と強さを自動保存（現在 ${points.length} 点）</div>${points.length?'<div class="hint">'+points.slice(-4).map(p=>timeWithSeconds(p.ts)+'：'+p.level+'/10').join('　→　')+'</div>':''}</div>`:'';
+  return `<div class="capture-session"><b>${safeText(quickLabel(s))}</b><div class="elapsed" data-elapsed-start="${s.startTs}">${elapsedClock(Date.now()-s.startTs)}</div><div class="hint">開始：${fmtDateStr(s.startTs)} ${timeWithSeconds(s.startTs)}　詳細はあとから変更可</div>${meter}<button class="ghost-btn" data-quick-open="${safeText(s.id)}">詳細を入力・修正</button><button class="primary-btn" style="background:#b91c1c" data-quick-stop="${safeText(s.id)}">終了時刻を記録</button></div>`;
+ }).join(''):'<div class="hint">現在、計測中の記録はありません。</div>';
+ const el=document.getElementById('captureActiveGlobal');if(el)el.innerHTML=html;
+ if(!el)return;
+ el.querySelectorAll('[data-quick-open]').forEach(b=>b.onclick=()=>openCapture(b.dataset.quickOpen));
+ el.querySelectorAll('[data-quick-stop]').forEach(b=>b.onclick=()=>stopQuick(b.dataset.quickStop));
+ el.querySelectorAll('[data-quick-level]').forEach(sl=>{
+  sl.addEventListener('input',()=>{const v=el.querySelector('[data-quick-level-label="'+sl.dataset.quickLevel+'"]');if(v)v.textContent=sl.value+' / 10（未確定）';});
+  sl.addEventListener('change',()=>recordQuickLevel(sl.dataset.quickLevel,sl.value));
+ });
 }
 setInterval(()=>{document.querySelectorAll('[data-elapsed-start]').forEach(el=>el.textContent=elapsedClock(Date.now()-Number(el.dataset.elapsedStart)));},1000);
 function categoryOptions(kind){return `<div class="capture-choice-grid">${[['pain','🩹 痛み'],['symptom','🤒 症状'],['urine','🚽 排尿'],['walk','🚶 歩行'],['sleep','😴 睡眠'],['bath','🛁 入浴'],['exercise','🏃 運動']].map(([v,l])=>`<button type="button" data-capture-kind="${v}" class="${kind===v?'active':''}">${l}</button>`).join('')}</div>`;}
@@ -3648,22 +3665,34 @@ function captureForm(s){const kind=s.kind;let block=kind==='unknown'?`<div class
  const def=readExtra(EXERCISE_DEFS_KEY).find(x=>x.id===s.exerciseId);
  if(def?.mode==='reps')block+=`<div class="field"><label>カウント（目標：${Number(def.reps)||30}回 / 1回${Number(def.seconds)||3}秒）</label><div class="elapsed" id="captureReps">${Number(s.repsDone)||0}回</div><button type="button" class="ghost-btn" id="countOneRep">＋1回</button><button type="button" class="ghost-btn" id="autoCountReps">自動カウント開始 / 停止</button><div class="hint">自動カウントは時間の目安です。実際に動いた回数は修正できます。</div></div>`;
  }
- block+=`<div class="field"><label>メモ（任意）</label><textarea id="captureNote" placeholder="後から入力できます">${safeText(s.note)}</textarea></div><div class="hint">計測開始：${fmtDateStr(s.startTs)} ${timeWithSeconds(s.startTs)}。時刻は詳細入力で変わりません。</div>`;
+ block+=`<div class="field"><label>メモ（任意）</label><textarea id="captureNote" placeholder="後から入力できます">${safeText(s.note)}</textarea></div>
+ <div class="field-row"><div class="field"><label>開始日</label><input type="date" id="captureStartDate" value="${fmtDateStr(s.startTs)}"></div><div class="field"><label>開始時刻（秒まで編集）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="captureStartTime" value="${timeWithSeconds(s.startTs)}"></div></div>
+ ${s.endTs!=null?`<div class="field-row"><div class="field"><label>終了日</label><input type="date" id="captureEndDate" value="${fmtDateStr(s.endTs)}"></div><div class="field"><label>終了時刻（秒まで編集）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="captureEndTime" value="${timeWithSeconds(s.endTs)}"></div></div>`:''}<div class="hint">時刻は HH:MM:SS（例 14:32:07）で入力してください。変更は保存時に反映します。</div>`;
  return block;}
-function openCapture(id){const s=readQuick().find(x=>x.id===id);if(!s)return;editingCaptureId=id;captureBox.classList.add('open');document.getElementById('captureTitle').textContent=quickLabel(s)+(s.endTs?'の詳細入力':'の記録中');document.getElementById('captureFields').innerHTML=captureForm(s);document.getElementById('captureSaveDetails').textContent='詳細を保存する（記録は継続）';
- document.querySelectorAll('[data-capture-kind]').forEach(btn=>btn.onclick=()=>{changeQuickKind(id,btn.dataset.captureKind);});
+function openCapture(id){const s=readQuick().find(x=>x.id===id);if(!s)return;editingCaptureId=id;captureBox.classList.add('open');document.getElementById('captureTitle').textContent=quickLabel(s)+(s.endTs?'の詳細入力':'の記録中');document.getElementById('captureFields').innerHTML=captureForm(s); document.getElementById('captureSaveDetails').textContent=s.endTs?'詳細を保存して記録を確定':'詳細を保存する（記録は継続）';
+ document.querySelectorAll('[data-capture-kind]').forEach(btn=>btn.onclick=()=>{if(captureDetails())changeQuickKind(id,btn.dataset.captureKind);});
+ // メモは記録中に編集中のまま画面が切り替わっても失われないよう、自動的に仮保存する。
+ document.getElementById('captureNote')?.addEventListener('input',e=>{const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.note=e.target.value;storeQuick(rows);}});
  const r=document.getElementById('captureRegion');if(r){r.onchange=()=>renderPartOptions();renderPartOptions(s.detail||'');}
- const ex=document.getElementById('captureExercise');if(ex)ex.onchange=()=>{const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.exerciseId=ex.value||null;row.title=exerciseDefinitions().find(x=>x.id===row.exerciseId)?.name||null;if(storeQuick(rows)){drawQuick();openCapture(id);}}};
- const sl=document.getElementById('captureLevel');if(sl)sl.oninput=()=>{document.getElementById('captureLevelValue').textContent=sl.value+'/10';};
+ const ex=document.getElementById('captureExercise');if(ex)ex.onchange=()=>{if(!captureDetails())return;const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.exerciseId=ex.value||null;row.title=exerciseDefinitions().find(x=>x.id===row.exerciseId)?.name||null;if(storeQuick(rows)){drawQuick();openCapture(id);}}};
+ const sl=document.getElementById('captureLevel');if(sl){
+  sl.oninput=()=>{document.getElementById('captureLevelValue').textContent=sl.value+'/10（指を離すと保存）';};
+  sl.addEventListener('change',()=>recordQuickLevel(id,sl.value));
+ }
  document.getElementById('countOneRep')?.addEventListener('click',()=>incrementReps(1));
  document.getElementById('autoCountReps')?.addEventListener('click',toggleCountGuide);
 }
 function changeQuickKind(id,kind){const rows=readQuick(),s=rows.find(x=>x.id===id);if(!s)return;s.kind=kind;if(storeQuick(rows)){drawQuick();openCapture(id);}}
 function captureDetails(){const rows=readQuick(),s=rows.find(x=>x.id===editingCaptureId);if(!s)return false;
  const get=id=>document.getElementById(id)?.value;
+ const newStart=tsFromInputs(get('captureStartDate'),get('captureStartTime'));
+ const newEnd=s.endTs!=null?tsFromInputs(get('captureEndDate'),get('captureEndTime')):s.endTs;
+ if(!Number.isFinite(newStart)||(s.endTs!=null&&(!Number.isFinite(newEnd)||newEnd<newStart))){alert('開始・終了日時を HH:MM:SS（秒まで）で正しく入力してください');return false;}
+ s.startTs=(get('captureStartDate')===fmtDateStr(s.startTs)&&get('captureStartTime')===timeWithSeconds(s.startTs))?s.startTs:newStart;
+ if(s.endTs!=null)s.endTs=(get('captureEndDate')===fmtDateStr(s.endTs)&&get('captureEndTime')===timeWithSeconds(s.endTs))?s.endTs:newEnd;
  if(s.kind==='pain'){s.region=get('captureRegion')||'';s.detail=get('captureDetail')||'';}
  if(s.kind==='symptom')s.symptomKey=get('captureSymptom')||'';
- if(['pain','symptom'].includes(s.kind) && get('captureLevel')!=null)s.level=Number(get('captureLevel'));
+ if(['pain','symptom'].includes(s.kind) && s.level!=null && get('captureLevel')!=null)s.level=Number(get('captureLevel'));
  if(s.kind==='exercise'){s.exerciseId=get('captureExercise')||s.exerciseId||null;const def=exerciseDefinitions().find(x=>x.id===s.exerciseId);s.title=def?.name||null;}
  if(s.kind==='bath')s.bathType=get('captureBath')||'湯船';
  if(s.kind==='walk'){const value=get('captureSteps');if(value!==''&&value!=null){const n=Number(value);if(!Number.isInteger(n)||n<0||n>1000000){alert('歩数は0以上の整数で入力してください');return false;}s.steps=n;}}
@@ -3675,14 +3704,34 @@ function incrementReps(n=1){if(!editingCaptureId)return;const rows=readQuick(),s
 function toggleCountGuide(){if(countGuideTimer){stopCountGuide();return;}const s=readQuick().find(x=>x.id===editingCaptureId),def=readExtra(EXERCISE_DEFS_KEY).find(x=>x.id===s?.exerciseId);if(!def)return;const seconds=Math.max(1,Math.min(60,Number(def.seconds)||3)),target=Number(def.reps)||30;document.getElementById('autoCountReps').textContent='自動カウント停止';countGuideTimer=setInterval(()=>{const current=readQuick().find(x=>x.id===editingCaptureId);if(!current||Number(current.repsDone)>=target){stopCountGuide();return;}incrementReps(1);},seconds*1000);}
 function stopQuick(id){if(editingCaptureId===id && captureBox.classList.contains('open')){if(!captureDetails())return;}stopCountGuide();
  const rows=readQuick(),s=rows.find(x=>x.id===id);if(!s)return;const end=Date.now();s.endTs=s.endTs??Math.max(end,s.startTs);
+ if(!storeQuick(rows))return; // 終了時刻を先に永続化する
+ // 前回の保存は成功したがセッション整理だけ失敗した場合、同じ履歴を二重登録しない。
+ if([...appData.painRecords,...appData.symptomEvents].some(r=>r.sessionId===s.id)){
+  if(storeQuick(rows.filter(x=>x.id!==id))){captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();refreshCaptureViews();}
+  else alert('履歴は保存済みですが計測状態の整理に失敗しました。再度終了を押さずバックアップしてください。');
+  return;
+ }
  // 種類・必須入力が未設定の場合、未完成として安全に保持し医師用集計に混入させない。
  let saved=false;
- if(s.kind==='pain'&&s.region&&s.level!=null){appData.painRecords.push({id:appData.nextId++,region:s.detail?s.region+'・'+s.detail:s.region,level:s.level,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),recordedAt:end,entryType:'manual',sessionId:null,segmentIndex:0,note:s.note||''});saved=saveData();}
- else if(s.kind==='symptom'&&s.symptomKey&&s.level!=null){const item=symptomCatalog.find(x=>x.key===s.symptomKey);appData.symptomEvents.push({id:appData.nextId++,type:s.symptomKey,label:item?.label||s.symptomKey,kind:'intensity',value:s.level,unit:'/10',startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),recordedAt:end,entryType:'manual',note:s.note||''});saved=saveData();}
+ if(['pain','symptom'].includes(s.kind) && s.level!=null && (s.kind==='pain'?!!s.region:!!s.symptomKey)){
+  const points=(Array.isArray(s.points)&&s.points.length?s.points:[{ts:s.startTs,level:s.level}]).filter(p=>Number.isFinite(p.ts)&&p.ts<=s.endTs&&Number.isInteger(p.level)).sort((a,b)=>a.ts-b.ts);
+  const item=s.kind==='symptom'?symptomCatalog.find(x=>x.key===s.symptomKey):null;
+  const targets=s.kind==='pain'?appData.painRecords:appData.symptomEvents;
+  const previousNextId=appData.nextId;
+  const created=[];
+  for(let i=0;i<points.length;i++){
+    const p=points[i],next=points[i+1],segmentEnd=next?Math.min(s.endTs,Math.max(p.ts,next.ts)):s.endTs;
+    const common={id:appData.nextId++,startTs:p.ts,endTs:segmentEnd,durationSec:Math.max(0,Math.round((segmentEnd-p.ts)/1000)),sessionStartTs:s.startTs,recordedAt:p.ts,entryType:'realtime',sessionId:s.id,segmentIndex:i,note:s.note||''};
+    created.push(s.kind==='pain'?{...common,region:s.region,detail:s.detail||'',level:p.level}:{...common,type:s.symptomKey,label:item?.label||s.symptomKey,kind:'intensity',value:p.level,unit:'/10'});
+  }
+  targets.push(...created);
+  saved=created.length>0&&saveData();
+  if(!saved){targets.splice(targets.length-created.length,created.length);appData.nextId=previousNextId;}
+ }
  else if(['urine','sleep','bath'].includes(s.kind)){appData.lifestyleEvents.push({id:appData.nextId++,type:({urine:'排尿',sleep:'睡眠',bath:'入浴'}[s.kind]),bathType:s.kind==='bath'?(s.bathType||'湯船'):undefined,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),color:'#e9c33a',recordedAt:end,entryType:'manual',note:s.note||''});saved=saveData();}
  else if(s.kind==='walk'||(s.kind==='exercise'&&s.exerciseId)){const log=readExtra(EXERCISE_LOG_KEY);log.push({id:'E'+end+'_'+Math.random().toString(36).slice(2,6),title:quickLabel(s),kind:s.kind,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),steps:s.steps??null,repsDone:s.repsDone||0,note:s.note||''});saved=writeExtra(EXERCISE_LOG_KEY,log);}
  if(!saved){s.status='incomplete';if(storeQuick(rows)){captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();alert('終了時刻を保存しました。詳細未設定の記録として残しています。あとから完成できます。');}return;}
- if(!storeQuick(rows.filter(x=>x.id!==id))){alert('計測状態の整理に失敗しました。再操作前にバックアップしてください。');return;}
+ if(!storeQuick(rows.filter(x=>x.id!==id))){alert('履歴の保存は完了しましたが計測状態の整理に失敗しました。バックアップ後に再度画面を開いてください。');return;}
  captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();refreshCaptureViews();
 }
 function refreshCaptureViews(){renderRecordsList();renderSymptomHistory();renderLifestyleHistory();renderTimeline();renderTrend();renderChart();renderExercises();updateHome();}
@@ -3694,7 +3743,7 @@ const prevStop=stopQuick;
 document.getElementById('globalInstantStart').onclick=()=>startQuick();
 document.querySelectorAll('[data-start-capture]').forEach(btn=>btn.onclick=()=>startQuick(btn.dataset.startCapture));
 document.getElementById('captureClose').onclick=()=>{stopCountGuide();captureBox.classList.remove('open');editingCaptureId=null;};
-document.getElementById('captureSaveDetails').onclick=()=>{if(captureDetails()){stopCountGuide();captureBox.classList.remove('open');editingCaptureId=null;drawQuick();}};
+document.getElementById('captureSaveDetails').onclick=()=>{if(captureDetails()){stopCountGuide();const id=editingCaptureId,s=readQuick().find(x=>x.id===id);if(s?.endTs!=null){stopQuick(id);}else{captureBox.classList.remove('open');editingCaptureId=null;drawQuick();}}};
 document.getElementById('captureStop').onclick=()=>{if(editingCaptureId)stopQuick(editingCaptureId);};
 function measureDefinitions(){return readExtra(MEASURE_DEFS_KEY);}
 function renderMeasureDefinitions(){const defs=measureDefinitions(),host=document.getElementById('measureDefList');host.innerHTML=defs.map(x=>`<div class="manage-row"><span>${safeText(x.name)}（${safeText(x.unit||'単位なし')}）</span><button type="button" data-meas-rename="${safeText(x.id)}">編集</button><button type="button" data-meas-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-meas-rename]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measRename);if(!r)return;const name=prompt('測定名',r.name);if(!name?.trim())return;const unit=prompt('単位',r.unit||'');if(unit===null)return;r.name=name.trim();r.unit=unit.trim();if(writeExtra(MEASURE_DEFS_KEY,rows))renderMeasureDefinitions();renderMeasureButtons();});host.querySelectorAll('[data-meas-toggle]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measToggle);if(r){r.hidden=!r.hidden;writeExtra(MEASURE_DEFS_KEY,rows);renderMeasureDefinitions();renderMeasureButtons();}});}
@@ -3707,7 +3756,7 @@ document.getElementById('addMeasureDef').onclick=()=>{const name=document.getEle
 function exerciseDefinitions(){return readExtra(EXERCISE_DEFS_KEY);}
 function renderExerciseDefinitions(){const rows=exerciseDefinitions(),host=document.getElementById('exerciseDefList');host.innerHTML=rows.map(x=>`<div class="manage-row"><span>${safeText(x.name)}<small> ${x.mode==='reps'?x.reps+'回 / '+x.seconds+'秒':'時間計測'}</small></span><button type="button" data-ex-rename="${safeText(x.id)}">名前変更</button><button type="button" data-ex-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-ex-rename]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exRename),name=prompt('運動名',r?.name||'');if(name?.trim()&&r){r.name=name.trim();writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});host.querySelectorAll('[data-ex-toggle]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exToggle);if(r){r.hidden=!r.hidden;writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});}
 document.getElementById('addExerciseDef').onclick=()=>{const name=document.getElementById('newExerciseName').value.trim(),mode=document.getElementById('newExerciseMode').value,reps=Number(document.getElementById('newExerciseReps').value),seconds=Number(document.getElementById('newExerciseSeconds').value);if(!name||mode==='reps'&&(!Number.isInteger(reps)||reps<1||reps>1000||!Number.isInteger(seconds)||seconds<1||seconds>60))return alert('名前・回数・秒数を確認してください');const rows=exerciseDefinitions();rows.push({id:newPresetId(),name,mode,reps,seconds,hidden:false});if(writeExtra(EXERCISE_DEFS_KEY,rows)){document.getElementById('newExerciseName').value='';renderExerciseDefinitions();renderExercises();}};
-function renderExercises(){const host=document.getElementById('exerciseMenu');const rows=exerciseDefinitions().filter(x=>!x.hidden);host.innerHTML='<div class="life-launch-grid"><button class="life-launch" type="button" data-ex-walk><span class="life-emoji">🚶</span><strong>ウォーキング</strong><small>計測・歩数入力</small></button>'+rows.map(r=>`<button class="life-launch" type="button" data-ex-run="${safeText(r.id)}"><span class="life-emoji">🏃</span><strong>${safeText(r.name)}</strong><small>${r.mode==='reps'?r.reps+'回':'時間計測'}</small></button>`).join('')+'</div>';host.querySelector('[data-ex-walk]').onclick=()=>startQuick('walk');host.querySelectorAll('[data-ex-run]').forEach(b=>b.onclick=()=>startQuick('exercise',b.dataset.exRun));const hist=document.getElementById('exerciseHistory');hist.innerHTML=readExtra(EXERCISE_LOG_KEY).sort((a,b)=>b.startTs-a.startTs).map(r=>`<div class="record-item"><div><b>${safeText(r.title)}</b><div class="meta">${fmtDateStr(r.startTs)} ${timeWithSeconds(r.startTs)} ・ ${fmtDur(r.durationSec)}${r.steps!=null?' ・ '+r.steps+'歩':''}${r.repsDone?' ・ '+r.repsDone+'回':''}</div></div><button class="del-btn" data-del-exlog="${safeText(r.id)}">削除</button></div>`).join('');hist.querySelectorAll('[data-del-exlog]').forEach(b=>b.onclick=()=>{if(confirm('この運動履歴を削除しますか？')){writeExtra(EXERCISE_LOG_KEY,readExtra(EXERCISE_LOG_KEY).filter(r=>r.id!==b.dataset.delExlog));renderExercises();renderTimeline();}});}
+function renderExercises(){const host=document.getElementById('exerciseMenu');const rows=exerciseDefinitions().filter(x=>!x.hidden);host.innerHTML='<div class="life-launch-grid"><button class="life-launch" type="button" data-ex-walk><span class="life-emoji">🚶</span><strong>ウォーキング</strong><small>計測・歩数入力</small></button>'+rows.map(r=>`<button class="life-launch" type="button" data-ex-run="${safeText(r.id)}"><span class="life-emoji">🏃</span><strong>${safeText(r.name)}</strong><small>${r.mode==='reps'?r.reps+'回':'時間計測'}</small></button>`).join('')+'</div>';host.querySelector('[data-ex-walk]').onclick=()=>startQuick('walk');host.querySelectorAll('[data-ex-run]').forEach(b=>b.onclick=()=>startQuick('exercise',b.dataset.exRun));const hist=document.getElementById('exerciseHistory');hist.innerHTML=readExtra(EXERCISE_LOG_KEY).sort((a,b)=>b.startTs-a.startTs).map(r=>`<div class="record-item"><div><b>${safeText(r.title)}</b><div class="meta">${fmtDateStr(r.startTs)} ${timeWithSeconds(r.startTs)} ・ ${fmtDur(r.durationSec)}${r.steps!=null?' ・ '+r.steps+'歩':''}${r.repsDone?' ・ '+r.repsDone+'回':''}${r.note?' ／ メモ：'+safeText(r.note):''}</div></div><button class="del-btn" data-del-exlog="${safeText(r.id)}">削除</button></div>`).join('');hist.querySelectorAll('[data-del-exlog]').forEach(b=>b.onclick=()=>{if(confirm('この運動履歴を削除しますか？')){writeExtra(EXERCISE_LOG_KEY,readExtra(EXERCISE_LOG_KEY).filter(r=>r.id!==b.dataset.delExlog));renderExercises();renderTimeline();}});}
 // 各入力パネルを共通レイアウトに変換。既存ノードとイベントを維持する。
 document.querySelectorAll('.modal-backdrop .modal').forEach(modal=>{
  const footer=modal.querySelector(':scope > .modal-actions');if(!footer)return;
@@ -3715,6 +3764,10 @@ document.querySelectorAll('.modal-backdrop .modal').forEach(modal=>{
  const body=document.createElement('div');body.className='modal-scroll-content';
  modal.insertBefore(body,footer);contents.forEach(el=>body.appendChild(el));
 });
+// 旧版で計測を開始していたセッションも、表示だけは上部へ移す。
+const legacyHolder=document.getElementById('unifiedLegacySessions');
+['activePanel','activeSymptomPanel'].forEach(id=>{const node=document.getElementById(id);if(node)legacyHolder.appendChild(node);});
+document.getElementById('symptomManualEntry')?.addEventListener('click',()=>{openSymptomModal();document.getElementById('sShowHistoryTime').click();});
 renderMeasureDefinitions();renderMeasureButtons();renderExerciseDefinitions();renderExercises();drawQuick();renderIncomplete();
 
 showMeasurements();showBreathing();updateHome();
