@@ -778,7 +778,7 @@ input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0;}
    <div id="safeMeasureDefaultManager"></div>
  </div></details>
       <details class="settings-preset-panel" id="exerciseManager"><summary>🏃 運動メニューの登録・管理</summary><div class="field"><label>運動名</label><input id="newExerciseName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>形式</label><select id="newExerciseMode"><option value="reps">回数ガイド</option><option value="timer">時間計測</option></select></div><div class="field"><label>目標回数（回数ガイドの場合）</label><input id="newExerciseReps" type="number" min="1" max="1000" value="30"></div><div class="field"><label>1回の動作時間（秒）</label><input id="newExerciseSeconds" type="number" min="1" max="60" value="3"></div><button class="primary-btn" id="addExerciseDef">運動を登録する</button><div id="exerciseDefList"></div></details>
-      <details class="settings-preset-panel" id="safeVoiceSettings"><summary>🔊 音声ガイドの登録・管理</summary><div class="hint">外部の読み上げAPIは使用しません。端末内の日本語音声だけを選び、利用できなければ再生しません。文章や設定はこの端末のみに保存します。</div><div id="safeVoiceList"></div><div class="field"><label for="safeVoiceName">メニュー名（編集対象）</label><input id="safeVoiceName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label for="safeVoiceSteps">動作の順番（1行に1動作：文章｜秒数）</label><textarea id="safeVoiceSteps" rows="5" placeholder="足を上げます｜3&#10;下げます｜3"></textarea></div><div class="field-row"><div class="field"><label for="safeVoiceRepeats">繰り返し回数</label><input id="safeVoiceRepeats" type="number" min="1" max="200" value="10"></div><div class="field"><label for="safeVoiceSpeed">読み上げ速度</label><input id="safeVoiceSpeed" type="number" min="0.5" max="1.5" step="0.1" value="1"></div></div><div class="field"><label for="safeVoiceType">音声（端末で利用可能な日本語音声）</label><select id="safeVoiceType"><option value="">自動選択</option></select></div><button type="button" class="primary-btn" id="safeVoiceSave">音声メニューを登録</button><button type="button" class="ghost-btn" id="safeVoiceClear">入力をクリア</button><div id="safeVoiceSavedMessage" class="hint" role="status" aria-live="polite"></div></details><details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
+      <details class="settings-preset-panel" id="safeVoiceSettings"><summary>🔊 音声ガイドの登録・管理</summary><div class="hint">外部の読み上げAPIは使用しません。端末内の日本語音声だけを選び、利用できなければ再生しません。文章や設定はこの端末のみに保存します。</div><div id="safeVoiceList"></div><div class="field"><label for="safeVoiceName">メニュー名（編集対象）</label><input id="safeVoiceName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>動作の順番（文章と秒数を別々に入力）</label><div class="hint">「｜」などの記号入力は不要です。各動作を1行ずつ追加してください。</div><div id="htVoiceStepRows"></div><button type="button" class="ghost-btn" id="htVoiceAddStep">＋ 動作を追加</button><textarea id="safeVoiceSteps" hidden aria-hidden="true"></textarea></div><div class="field-row"><div class="field"><label for="safeVoiceRepeats">繰り返し回数</label><input id="safeVoiceRepeats" type="number" min="1" max="200" value="10"></div><div class="field"><label for="safeVoiceSpeed">読み上げ速度</label><input id="safeVoiceSpeed" type="number" min="0.5" max="1.5" step="0.1" value="1"></div></div><div class="field"><label for="safeVoiceType">音声（端末で利用可能な日本語音声）</label><select id="safeVoiceType"><option value="">自動選択</option></select></div><button type="button" class="primary-btn" id="safeVoiceSave">音声メニューを登録</button><button type="button" class="ghost-btn" id="safeVoiceClear">入力をクリア</button><div id="safeVoiceSavedMessage" class="hint" role="status" aria-live="polite"></div></details><details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
         <div id="drinkPresetList"></div>
         <div class="field"><label for="drinkPresetName">飲み物の名前</label><input id="drinkPresetName" maxlength="100" placeholder="例：オリーブオイルはちみつレモン"></div>
         <div class="field"><label for="drinkPresetMl">いつもの量（ml）</label><input id="drinkPresetMl" type="number" min="1" max="5000" step="1" value="200"></div>
@@ -813,8 +813,8 @@ input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0;}
       <button class="ghost-btn" id="importCsvBtn">⬆ CSVを取り込む</button>
       <div class="note" style="margin-top:10px">取り込む前に内容を確認する画面が表示されます。取り込みもこの端末内だけで行われ、外部サーバーには送信されません。</div>
     </div>
-    </div><button type="button" class="ghost-btn" id="undoLastDeletion" hidden style="margin-bottom:12px">↩ 直前に削除した記録を元に戻す</button>
-    <div class="card" id="integrityRepairPanel"><h2>記録IDの整合性チェック・修復</h2><div class="hint">過去の記録IDに不整合があるときのみ使用します。重複したIDを修復する前に完全JSONを保存してください。</div><button type="button" class="ghost-btn" id="checkCoreIds">IDの状態を確認</button><button type="button" class="ghost-btn" id="repairCoreIds">バックアップ後にIDを修復</button></div><div class="card">
+    </div><!-- v5.16: 即時取り消しの固定ボタンは撤去。ゴミ箱から30日以内に復元できます。 -->
+    <div class="card" id="htTrashPanel"><h2>🗑️ ゴミ箱（30日間保管）</h2><div class="hint">削除した記録はこの端末内のゴミ箱へ移動し、削除から30日以内に復元できます。30日を過ぎた記録は、次にアプリを開いた際などに完全削除されます。ゴミ箱も完全JSONバックアップに含まれます。設定メニューの削除には適用されません。</div><div id="htTrashList" class="registered-list" role="status" aria-live="polite"></div></div><div class="card" id="integrityRepairPanel"><h2>記録IDの整合性チェック・修復</h2><div class="hint">過去の記録IDに不整合があるときのみ使用します。重複したIDを修復する前に完全JSONを保存してください。</div><button type="button" class="ghost-btn" id="checkCoreIds">IDの状態を確認</button><button type="button" class="ghost-btn" id="repairCoreIds">バックアップ後にIDを修復</button></div><div class="card">
       <h2>データの削除</h2>
       <div class="hint">すべての記録・設定と旧形式の端末内データを削除します。完全JSONを端末外にも保管し、ファイルアプリで確認してください。</div>
       <button class="primary-btn danger-btn" id="deleteAllBtn">すべてのデータを削除する</button>
@@ -1672,46 +1672,111 @@ function renderActivePanel(){
   });
 }
 
-// 最後に削除した一件だけ、安全に取り消せるようにする（端末内のみ）。
-let lastDeletedCoreSnapshot=null;
-function deleteCoreRecordSafely(key,id,label){
-  const arr=appData[key];if(!Array.isArray(arr))return false;
-  const matches=arr.filter(r=>String(r.id)===String(id));
-  if(matches.length!==1){alert('同じIDの記録が複数あるか、記録が見つかりません。誤削除を防ぐため中止しました。');return false;}
-  if(!confirm('「'+label+'」の記録を削除しますか？あとから取り消せます。'))return false;
-  const snapshot=JSON.stringify(appData);appData[key]=arr.filter(r=>String(r.id)!==String(id));
-  if(!saveData()){appData=JSON.parse(snapshot);return false;}
-  lastDeletedCoreSnapshot={before:snapshot,after:window.__htCoreSnapshot,deletedAt:Date.now()};htLastExtraUndo=null;
-  const undo=document.getElementById('undoLastDeletion');if(undo)undo.hidden=false;
-  return true;
+// v5.16: コア記録・拡張記録を30日保管するゴミ箱。
+// 元の保存形式は変更せず、別のlocalStorageキーに保存する。
+const HT_TRASH_RETENTION_MS=30*24*60*60*1000;
+function htReadTrash(){
+ const raw=localStorage.getItem('healthTimelineDeletedRecords_v1');
+ if(raw===null)return [];
+ const rows=JSON.parse(raw);
+ if(!Array.isArray(rows)||rows.some(x=>!x||typeof x!=='object'||!['core','extra'].includes(x.scope)||typeof x.key!=='string'||!x.record||!Number.isFinite(x.deletedAt)))throw Error('ゴミ箱のデータを読み取れません。削除・復元を停止してください。');
+ return rows;
 }
-function undoLastCoreDeletion(){
-  if(htLastExtraUndo && (!lastDeletedCoreSnapshot || htLastExtraUndo.deletedAt>lastDeletedCoreSnapshot.deletedAt)){
-    const u=htLastExtraUndo;
-    if(localStorage.getItem(u.key)!==u.after){alert('削除後に別の変更があったため、上書き復元を中止しました。');return;}
-    try{localStorage.setItem(u.key,u.before);htLastExtraUndo=null;document.getElementById('undoLastDeletion').hidden=true;[showMeasurements,showBreathing,renderExercises,renderUnifiedHistory,updateHome].forEach(f=>{try{f();}catch(_){}});}catch(_){alert('復元に失敗しました。JSONバックアップを確認してください。');}
+function htWriteTrash(rows){
+ try{
+  const old=localStorage.getItem('healthTimelineDeletedRecords_v1');
+  if(old!==null)htReadTrash();
+  const json=JSON.stringify(rows);
+  localStorage.setItem('healthTimelineDeletedRecords_v1',json);
+  if(localStorage.getItem('healthTimelineDeletedRecords_v1')!==json)throw Error('保存後の照合失敗');
+  return true;
+ }catch(e){console.error('ゴミ箱保存エラー',e);alert('ゴミ箱を保存できませんでした。既存データ保護のため操作を中止しました。空き容量をご確認ください。');return false;}
+}
+function htTrashEntry(scope,key,record){
+ return {token:'T'+Date.now()+'_'+Math.random().toString(36).slice(2,12),scope,key,record:JSON.parse(JSON.stringify(record)),deletedAt:Date.now()};
+}
+function htStageTrash(entry){
+ let previous;
+ try{previous=htReadTrash();}catch(e){alert('ゴミ箱の記録が破損しています。完全JSONバックアップを作成して確認してください。');return null;}
+ const now=Date.now();const active=previous.filter(x=>now-x.deletedAt<HT_TRASH_RETENTION_MS);
+ if(!htWriteTrash([...active,entry]))return null;
+ return previous;
+}
+function htRefreshTrash(){try{htRenderTrash();}catch(e){console.warn('ゴミ箱表示',e);}}
+function deleteCoreRecordSafely(key,id,label){
+ const arr=appData[key];if(!Array.isArray(arr))return false;
+ const hits=arr.filter(r=>String(r.id)===String(id));
+ if(hits.length!==1){alert('同じIDの記録が複数あるか、記録が見つかりません。誤削除を防ぐため中止しました。');return false;}
+ if(!confirm('「'+label+'」をゴミ箱に移動しますか？30日以内なら復元できます。'))return false;
+ const previous=htStageTrash(htTrashEntry('core',key,hits[0]));if(!previous)return false;
+ const snapshot=JSON.stringify(appData);
+ appData[key]=arr.filter(r=>String(r.id)!==String(id));
+ if(!saveData()){
+  appData=JSON.parse(snapshot);
+  if(!htWriteTrash(previous))showCriticalSaveWarning('ゴミ箱の戻し処理に失敗しました。バックアップを確保してください。');
+  htRefreshTrash();return false;
+ }
+ htRefreshTrash();return true;
+}
+function htRenderTrash(){
+ const host=document.getElementById('htTrashList');if(!host)return;
+ let all;try{all=htReadTrash();}catch(e){host.textContent='⚠ ゴミ箱の内容を読み込めません。データ保護のため操作を停止しています。';return;}
+ const now=Date.now(),active=all.filter(x=>now-x.deletedAt<HT_TRASH_RETENTION_MS);
+ if(active.length!==all.length){if(htWriteTrash(active))all=active;}
+ if(!all.length){host.textContent='ゴミ箱は空です。';return;}
+ host.innerHTML=all.slice().sort((a,b)=>b.deletedAt-a.deletedAt).map(x=>{
+  const left=Math.max(1,Math.ceil((HT_TRASH_RETENTION_MS-(now-x.deletedAt))/86400000));
+  const r=x.record,desc=String(r.title||r.label||r.type||r.region||x.key).slice(0,90);
+  const when=Number.isFinite(Number(r.startTs))?new Date(Number(r.startTs)).toLocaleString('ja-JP'):'';
+  return '<div class="manage-row"><span><b>'+safeText(desc)+'</b><small class="registered-description">'+safeText(when)+' ／ 残り約'+left+'日</small></span><button type="button" data-trash-restore="'+safeText(x.token)+'">復元</button><button type="button" data-trash-purge="'+safeText(x.token)+'">完全削除</button></div>';
+ }).join('');
+ host.querySelectorAll('[data-trash-restore]').forEach(b=>b.addEventListener('click',()=>htRestoreTrash(b.dataset.trashRestore)));
+ host.querySelectorAll('[data-trash-purge]').forEach(b=>b.addEventListener('click',()=>htPurgeTrash(b.dataset.trashPurge)));
+}
+function htRestoreTrash(token){
+ let rows;try{rows=htReadTrash();}catch(e){alert('ゴミ箱を読み込めません');return;}
+ const x=rows.find(r=>r.token===token);if(!x)return;
+ if(Date.now()-x.deletedAt>=HT_TRASH_RETENTION_MS){alert('保管期限が過ぎています。');htRenderTrash();return;}
+ if(!confirm('この記録をゴミ箱から復元しますか？'))return;
+ if(x.scope==='core'){
+  if(dataLoadFailed){alert('記録データの保護機能により保存が停止しています。先にバックアップを確認してください。');return;}
+  if(!Array.isArray(appData[x.key])){alert('復元先が見つかりません');return;}
+  const before=JSON.stringify(appData),rec=JSON.parse(JSON.stringify(x.record));
+  const used=new Set(HT_CORE_RECORD_KEYS.flatMap(k=>(appData[k]||[]).map(r=>String(r.id))));
+  if(used.has(String(rec.id))){
+   const candidate=Number(appData.nextId);
+   if(!Number.isSafeInteger(candidate)||candidate<1||used.has(String(candidate))){alert('復元先のIDが重複しています。ID修復後に再度お試しください。');return;}
+   rec.id=candidate;appData.nextId=candidate+1;
+  }else if(Number.isSafeInteger(Number(rec.id))&&Number(rec.id)>=Number(appData.nextId))appData.nextId=Number(rec.id)+1;
+  appData[x.key].push(rec);
+  if(!saveData()){appData=JSON.parse(before);return;}
+  if(!htWriteTrash(rows.filter(r=>r.token!==token))){
+    const after=JSON.stringify(appData);appData=JSON.parse(before);
+    if(!saveData()){appData=JSON.parse(after);showCriticalSaveWarning('復元後のゴミ箱更新に失敗しました。重複が発生しないよう確認してください。');}
     return;
   }
-  if(!lastDeletedCoreSnapshot)return;
-  // 削除後に別の記録が保存されていた場合は、古いスナップショットで上書きしない。
-  if(window.__htCoreSnapshot!==lastDeletedCoreSnapshot.after){
-    alert('削除後にほかの記録が変更されたため、古い状態には戻せません。既存の記録を守るため取り消しを中止しました。');return;
-  }
-  const current=JSON.stringify(appData),restored=JSON.parse(lastDeletedCoreSnapshot.before);
-  appData=restored;
-  if(!saveData()){appData=JSON.parse(current);return;}
-  lastDeletedCoreSnapshot=null;document.getElementById('undoLastDeletion').hidden=true;
   refreshAfterSafeDataChange();
+ }else{
+  const existingRaw=localStorage.getItem(x.key),entries=readExtra(x.key);
+  let rec=JSON.parse(JSON.stringify(x.record));
+  if(entries.some(r=>String(r.id)===String(rec.id)))rec.id='R'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  if(!writeExtra(x.key,[...entries,rec]))return;
+  if(!htWriteTrash(rows.filter(r=>r.token!==token))){
+   try{if(existingRaw===null)localStorage.removeItem(x.key);else localStorage.setItem(x.key,existingRaw);}catch(e){showCriticalSaveWarning('ゴミ箱の更新失敗。復元データの状態を確認してください。');}
+   return;
+  }
+  [showMeasurements,showBreathing,renderExercises,renderUnifiedHistory,updateHome].forEach(f=>{try{f();}catch(_){}});
+ }
+ htRefreshTrash();
+}
+function htPurgeTrash(token){
+ if(!confirm('この記録を完全削除しますか？元に戻せません。'))return;
+ try{const rows=htReadTrash();if(htWriteTrash(rows.filter(x=>x.token!==token)))htRenderTrash();}catch(e){alert('ゴミ箱を読み込めません');}
 }
 function refreshAfterSafeDataChange(){
-  [renderRecordsList,renderChart,renderSymptomHistory,renderMenstrualHistory,renderDischargeHistory,renderLifestyleHistory,renderMenstrualChart,renderTimeline,renderTrend,renderUnifiedHistory,updateHome].forEach(fn=>{try{fn();}catch(e){console.warn('再描画',e);}});
+ [renderRecordsList,renderChart,renderSymptomHistory,renderMenstrualHistory,renderDischargeHistory,renderLifestyleHistory,renderMenstrualChart,renderTimeline,renderTrend,renderUnifiedHistory,updateHome].forEach(fn=>{try{fn();}catch(e){console.warn('再描画',e);}});
 }
-const undoGlobalButton=document.getElementById('undoLastDeletion');
-if(undoGlobalButton){
-  document.body.appendChild(undoGlobalButton);
-  Object.assign(undoGlobalButton.style,{position:'fixed',bottom:'calc(env(safe-area-inset-bottom, 0px) + 16px)',left:'50%',transform:'translateX(-50%)',zIndex:'12000',background:'#047857',color:'#fff',border:'2px solid #86efac',borderRadius:'12px',padding:'13px 18px',fontWeight:'700',boxShadow:'0 8px 24px #0008',maxWidth:'90vw',width:'max-content'});
-  undoGlobalButton.addEventListener('click',undoLastCoreDeletion);
-}
+setTimeout(htRenderTrash,0);
 /* =========================================================
    痛み記録一覧
 ========================================================= */
@@ -2005,10 +2070,10 @@ function saveSelectedSymptoms(startTs, manualEndTs=null){
   }
   if(!saveData()){appData.symptomEvents.length=beforeCount;appData.nextId=beforeNextId;activeSymptomSessions=beforeSessions;alert('症状を保存できませんでした。内容を維持して再確認してください。');return false;} symptomBackdrop.classList.remove('open'); renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();touchActive(); return true;
 }
-function commitSymptomSegment(session,endTs){ const r=appData.symptomEvents.find(x=>x.sessionId===session.sessionId&&x.segmentIndex===session.segmentIndex); if(r){r.endTs=endTs;r.durationSec=Math.max(0,Math.round((endTs-r.startTs)/1000));r.value=session.level;} saveData(); }
+function commitSymptomSegment(session,endTs){ const before=JSON.stringify(appData); const r=appData.symptomEvents.find(x=>x.sessionId===session.sessionId&&x.segmentIndex===session.segmentIndex); if(r){r.endTs=endTs;r.durationSec=Math.max(0,Math.round((endTs-r.startTs)/1000));r.value=session.level;} if(!saveData()){appData=JSON.parse(before);return false;}return true; }
 function renderActiveSymptomSessions(){ const holder=document.getElementById('activeSymptomPanel');if(!holder)return;const sessions=Object.values(activeSymptomSessions);if(!sessions.length){holder.innerHTML='';return;} holder.innerHTML=sessions.map(s=>`<div class="symptom-session-card is-recording"><div class="session-head"><div class="session-name">${safeText(s.label)}</div><span class="status-badge rec">● 記録中</span></div><div class="session-time">開始：${fmtJp(s.sessionStart)}</div><div class="slider-container"><div class="symptom-range-value" id="activeSymVal-${s.sessionId}">強さ：${s.level} / 10</div><input type="range" class="pain-slider symptom-range" data-active-symptom="${s.sessionId}" min="0" max="10" step="1" value="${s.level}"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div><button class="rec-btn session-end" data-end-symptom="${s.sessionId}">記録終了</button><div class="tip-txt">強さを変えると、その時刻で前の区間を確定します。</div></div>`).join('');
-  holder.querySelectorAll('[data-active-symptom]').forEach(sl=>sl.addEventListener('input',()=>{const id=sl.dataset.activeSymptom,s=activeSymptomSessions[id];if(!s)return;const v=parseInt(sl.value,10)||0;if(v===s.level)return;const now=Date.now();commitSymptomSegment(s,now);s.segmentIndex++;s.segStart=now;s.level=v;appData.symptomEvents.push({id:appData.nextId++,type:s.key,label:s.label,kind:'intensity',value:v,unit:'/10',startTs:now,endTs:null,recordedAt:Date.now(),entryType:'realtime',sessionId:s.sessionId,segmentIndex:s.segmentIndex,note:s.note||''});saveData();const out=document.getElementById('activeSymVal-'+id);if(out)out.textContent='強さ：'+v+' / 10';renderSymptomHistory();renderTimeline();}));
-  holder.querySelectorAll('[data-end-symptom]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.endSymptom,s=activeSymptomSessions[id];if(!s)return;commitSymptomSegment(s,Date.now());delete activeSymptomSessions[id];saveData();renderActiveSymptomSessions();renderSymptomHistory();renderTimeline();}));
+  holder.querySelectorAll('[data-active-symptom]').forEach(sl=>sl.addEventListener('input',()=>{const id=sl.dataset.activeSymptom,s=activeSymptomSessions[id];if(!s)return;const v=parseInt(sl.value,10)||0;if(v===s.level)return;const now=Date.now();const before=JSON.stringify(appData),beforeSession={...s};const oldSegment=appData.symptomEvents.find(x=>x.sessionId===s.sessionId&&x.segmentIndex===s.segmentIndex);if(oldSegment){oldSegment.endTs=now;oldSegment.durationSec=Math.max(0,Math.round((now-oldSegment.startTs)/1000));oldSegment.value=s.level;}s.segmentIndex++;s.segStart=now;s.level=v;appData.symptomEvents.push({id:appData.nextId++,type:s.key,label:s.label,kind:'intensity',value:v,unit:'/10',startTs:now,endTs:null,recordedAt:Date.now(),entryType:'realtime',sessionId:s.sessionId,segmentIndex:s.segmentIndex,note:s.note||''});if(!saveData()){appData=JSON.parse(before);Object.assign(s,beforeSession);sl.value=String(s.level);return;}const out=document.getElementById('activeSymVal-'+id);if(out)out.textContent='強さ：'+v+' / 10';renderSymptomHistory();renderTimeline();}));
+  holder.querySelectorAll('[data-end-symptom]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.endSymptom,s=activeSymptomSessions[id];if(!s)return;const before=JSON.stringify(appData);const oldSessions={...activeSymptomSessions};const r=appData.symptomEvents.find(x=>x.sessionId===s.sessionId&&x.segmentIndex===s.segmentIndex);if(r){r.endTs=Date.now();r.durationSec=Math.max(0,Math.round((r.endTs-r.startTs)/1000));r.value=s.level;}if(!saveData()){appData=JSON.parse(before);return;}delete activeSymptomSessions[id];renderActiveSymptomSessions();renderSymptomHistory();renderTimeline();}));
 }
 
 function saveSymptomsFromModal(){
@@ -3912,7 +3977,8 @@ const EXERCISE_LOG_KEY='healthTimelineExerciseHistory_v1';
 const SAFE_MEASURE_DEFAULTS_KEY='healthTimelineMeasureDefaults_v1';
 const SAFE_VOICE_DEFS_KEY='healthTimelineVoiceGuideDefinitions_v1';
 const SAFE_BACKUP_META_KEY='healthTimelineBackupMeta_v1';
-const BACKUP_KEYS=[SAFE_MEASURE_DEFAULTS_KEY,SAFE_VOICE_DEFS_KEY,STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY,'symptomRecords_v1','symptomRecords_v2','symptomRecords_v3','healthTimelineNextIdRecovery_v1'];
+const HT_TRASH_KEY='healthTimelineDeletedRecords_v1';
+const BACKUP_KEYS=[HT_TRASH_KEY,SAFE_MEASURE_DEFAULTS_KEY,SAFE_VOICE_DEFS_KEY,STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY,'symptomRecords_v1','symptomRecords_v2','symptomRecords_v3','healthTimelineNextIdRecovery_v1'];
 function safeExportObject(){
   const storage={};for(const k of BACKUP_KEYS)storage[k]=localStorage.getItem(k);
   const core=JSON.parse(storage[STORAGE_KEY_V4]||'null');
@@ -4382,17 +4448,17 @@ function openDischargeEdit(r){
     if(deleteCoreRecordSafely('dischargeEvents',r.id,'おりもの')){closeEdit();refreshAfterSafeDataChange();}
   };
 }
-let htLastExtraUndo=null;
+// v5.16: 拡張記録も同じ30日ゴミ箱へ保管する。
 function htDeleteExtraSafely(key,id,label){
  const rows=readExtra(key),hits=rows.filter(r=>String(r.id)===String(id));
  if(hits.length!==1){alert('記録IDが重複しているか、見つかりません。削除を中止しました。');return false;}
- if(!confirm('「'+label+'」を削除しますか？'))return false;
- const before=localStorage.getItem(key);
- if(!writeExtra(key,rows.filter(r=>String(r.id)!==String(id))))return false;
- htLastExtraUndo={key,before,after:localStorage.getItem(key),deletedAt:Date.now()};lastDeletedCoreSnapshot=null;
- const btn=document.getElementById('undoLastDeletion');
- if(btn){btn.hidden=false;btn.textContent='↩ 直前に削除した記録を元に戻す';}
- return true;
+ if(!confirm('「'+label+'」をゴミ箱へ移動しますか？30日以内なら復元できます。'))return false;
+ const previous=htStageTrash(htTrashEntry('extra',key,hits[0]));if(!previous)return false;
+ if(!writeExtra(key,rows.filter(r=>String(r.id)!==String(id)))){
+  if(!htWriteTrash(previous))showCriticalSaveWarning('ゴミ箱の戻し処理に失敗しました。バックアップを確保してください。');
+  htRefreshTrash();return false;
+ }
+ htRefreshTrash();return true;
 }
 function openExtraRecordEdit(kind,id){
   const key=kind==='measure'?MEASURE_KEY:kind==='breath'?BREATH_KEY:EXERCISE_LOG_KEY;
@@ -4506,12 +4572,31 @@ const safeHistoryKind=document.getElementById('safeHistoryKind'),safeHistoryFrom
 [safeHistoryKind,safeHistoryFrom].forEach(el=>el?.addEventListener('change',()=>{unifiedHistoryVisible=10;renderUnifiedHistory();}));
 // 音声は端末が提供するWeb Speech APIのみ。ネットワーク送信する外部TTS APIを使用しない。
 const SAFE_VOICE_BUILTINS=[
- {id:'builtin_breathe',name:'ゆったり呼吸（4・2・6・2秒）',repeats:5,rate:1,voice:'',steps:[{text:'息を吸います',seconds:4,countdown:true},{text:'止めます',seconds:2,countdown:true},{text:'息を吐きます',seconds:6,countdown:true},{text:'止めます',seconds:2,countdown:true}]},
- {id:'builtin_legs',name:'足上げ運動（10回）',repeats:10,rate:1,voice:'',steps:[{text:'足を上げます',seconds:3,announceRep:true},{text:'下げます',seconds:3}]}
+ {id:'builtin_breathe',name:'ゆったり呼吸（4・2・6・2秒）',repeats:5,rate:1,voice:'',steps:[{text:'息を吸います',seconds:4,countdown:true},{text:'止めます',seconds:2,countdown:true},{text:'息を吐きます',seconds:6,countdown:true},{text:'止めます',seconds:2,countdown:true}]}
 ];
 let safeVoiceEditing=null,safeVoiceRun=null,safeVoiceTimer=null;
 const safeVoiceSupport=('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
 function safeVoiceItems(){const items=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x&&typeof x.id==='string'&&Array.isArray(x.steps));return [...SAFE_VOICE_BUILTINS,...items];}
+function htCreateVoiceStepRow(text='',seconds=3){
+ const host=document.getElementById('htVoiceStepRows');if(!host)return;
+ if(host.children.length>=30){alert('動作は最大30行です。');return;}
+ const row=document.createElement('div');row.className='ht-voice-step-row';
+ row.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 80px auto;gap:8px;align-items:end;margin:9px 0';
+ const desc=document.createElement('label');desc.style.minWidth='0';desc.textContent='動作';
+ const input=document.createElement('input');input.type='text';input.maxLength=150;input.placeholder='例：足を上げる';input.value=text;input.className='ht-step-desc';input.style.width='100%';
+ const dur=document.createElement('label');dur.style.minWidth='0';dur.textContent='秒数';
+ const num=document.createElement('input');num.type='number';num.min='1';num.max='120';num.step='1';num.inputMode='numeric';num.value=seconds;num.className='ht-step-seconds';num.style.width='100%';
+ const remove=document.createElement('button');remove.type='button';remove.className='ghost-btn';remove.textContent='×';remove.title='この動作を削除';remove.style.padding='9px';remove.onclick=()=>{row.remove();};
+ desc.appendChild(input);dur.appendChild(num);row.append(desc,dur,remove);host.appendChild(row);
+}
+function htSetVoiceSteps(steps){const host=document.getElementById('htVoiceStepRows');if(!host)return;host.replaceChildren();for(const step of steps)htCreateVoiceStepRow(step.text,step.seconds);if(!steps.length)htCreateVoiceStepRow();}
+function htCollectVoiceSteps(){
+ const host=document.getElementById('htVoiceStepRows');const rows=[...host.children];
+ if(rows.length<1||rows.length>30)throw Error('動作は1～30行で登録してください');
+ return rows.map(row=>{const text=row.querySelector('.ht-step-desc').value.trim(),seconds=Number(row.querySelector('.ht-step-seconds').value);if(!text||text.length>150||!Number.isInteger(seconds)||seconds<1||seconds>120)throw Error('各動作の文章と秒数（1～120）を確認してください');return {text,seconds};});
+}
+document.getElementById('htVoiceAddStep').addEventListener('click',()=>htCreateVoiceStepRow());
+htSetVoiceSteps([]);
 function safeRenderVoice(){
  const items=safeVoiceItems();
  const sel=document.getElementById('safeVoiceMenu');
@@ -4523,7 +4608,7 @@ function safeRenderVoice(){
   const builtin=item.id.startsWith('builtin_');
   safeVoiceEditing=builtin?null:item.id;
   document.getElementById('safeVoiceName').value=builtin?item.name+'（カスタム）':item.name;
-  document.getElementById('safeVoiceSteps').value=item.steps.map(x=>x.text+'｜'+x.seconds).join('\n');
+  htSetVoiceSteps(item.steps);
   document.getElementById('safeVoiceRepeats').value=item.repeats;
   document.getElementById('safeVoiceSpeed').value=item.rate;
   document.getElementById('safeVoiceType').value=item.voice||'';
@@ -4540,13 +4625,12 @@ function safeRenderVoice(){
 }
 function safePopulateVoices(){if(!safeVoiceSupport)return;const field=document.getElementById('safeVoiceType'),current=field.value;const voices=speechSynthesis.getVoices().filter(v=>v.lang?.startsWith('ja')&&v.localService===true);field.innerHTML='<option value="">日本語音声を自動選択</option>'+voices.map(v=>`<option value="${safeText(v.name)}">${safeText(v.name)}</option>`).join('');field.value=voices.some(v=>v.name===current)?current:'';}
 if(safeVoiceSupport){safePopulateVoices();speechSynthesis.addEventListener?.('voiceschanged',safePopulateVoices);}
-function safeVoiceClearEdit(){safeVoiceEditing=null;['safeVoiceName','safeVoiceSteps'].forEach(id=>document.getElementById(id).value='');document.getElementById('safeVoiceRepeats').value=10;document.getElementById('safeVoiceSpeed').value=1;document.getElementById('safeVoiceSave').textContent='音声メニューを登録';}
+function safeVoiceClearEdit(){safeVoiceEditing=null;document.getElementById('safeVoiceName').value='';htSetVoiceSteps([]);document.getElementById('safeVoiceRepeats').value=10;document.getElementById('safeVoiceSpeed').value=1;document.getElementById('safeVoiceSave').textContent='音声メニューを登録';}
 document.getElementById('safeVoiceClear').onclick=safeVoiceClearEdit;
 document.getElementById('safeVoiceSave').onclick=()=>{
  const name=document.getElementById('safeVoiceName').value.trim(),text=document.getElementById('safeVoiceSteps').value,rate=Number(document.getElementById('safeVoiceSpeed').value),repeats=Number(document.getElementById('safeVoiceRepeats').value),voice=document.getElementById('safeVoiceType').value;
- const lines=text.split(/\r?\n/).filter(x=>x.trim());
- if(!name||name.length>60||lines.length<1||lines.length>30||!Number.isInteger(repeats)||repeats<1||repeats>200||rate<0.5||rate>1.5)return alert('名前、動作（1～30行）、繰り返し（1～200）、速度（0.5～1.5）を確認してください。');
- const steps=[];for(const line of lines){const i=line.lastIndexOf('｜');if(i<1)return alert('動作は「足を上げます｜3」の形式で1行ずつ入力してください。');const desc=line.slice(0,i).trim(),seconds=Number(line.slice(i+1).trim());if(!desc||desc.length>150||!Number.isInteger(seconds)||seconds<1||seconds>120)return alert('文章は150字以内、秒数は1～120の整数で入力してください。');steps.push({text:desc,seconds});}
+ if(!name||name.length>60||!Number.isInteger(repeats)||repeats<1||repeats>200||rate<0.5||rate>1.5)return alert('名前、繰り返し（1～200）、速度（0.5～1.5）を確認してください。');
+ let steps;try{steps=htCollectVoiceSteps();}catch(e){return alert(e.message);}
  const rows=readExtra(SAFE_VOICE_DEFS_KEY),existing=rows.find(x=>x.id===safeVoiceEditing);
  const record={id:existing?.id||newPresetId(),name,steps,repeats,rate,voice,hidden:existing?.hidden||false};
  if(existing)Object.assign(existing,record);else rows.push(record);
@@ -4645,6 +4729,34 @@ renderExercises=function(...args){
 // 自作ガイドの追加・削除後は運動メニューも同期して更新。
 const v57SafeRenderVoice=safeRenderVoice;
 safeRenderVoice=function(...args){const r=v57SafeRenderVoice(...args);renderExercises();return r;};
+// v5.16: 編集画面で保存失敗してもメモリ内の記録を勝手に変更しない。
+// 編集関数が設定するsaveハンドラを包み、保存が確定しなかった場合は既存オブジェクトを原位置へ復旧する。
+function htSafeguardCoreEdit(opener){return function(...args){
+ const out=opener.apply(this,args),button=document.getElementById('editSave'),original=button?.onclick;
+ if(typeof original!=='function')return out;
+ button.onclick=function(...clickArgs){
+  const before=JSON.stringify(appData),diskBefore=window.__htCoreSnapshot;
+  const result=original.apply(this,clickArgs);
+  if(window.__htCoreSnapshot===diskBefore&&JSON.stringify(appData)!==before){
+   // 型を壊さないよう、配列/各レコードの参照を維持して属性だけ復元。
+   const saved=JSON.parse(before);
+   for(const [k,v] of Object.entries(saved)){
+    if(Array.isArray(v)&&Array.isArray(appData[k])){
+     const current=appData[k];
+     for(const rec of current){const old=v.find(a=>String(a.id)===String(rec.id));if(!old)continue;for(const prop of Object.keys(rec))if(!(prop in old))delete rec[prop];Object.assign(rec,old);}
+     current.splice(0,current.length,...v.map(old=>current.find(rec=>String(rec.id)===String(old.id))||old));
+    }else appData[k]=v;
+   }
+   alert('編集内容を保存できませんでした。入力画面は閉じず、元の記録を保護しています。');
+  }
+  return result;
+ };
+ return out;
+};}
+openEditPain=htSafeguardCoreEdit(openEditPain);
+openEditSymptom=htSafeguardCoreEdit(openEditSymptom);
+openEditGeneric=htSafeguardCoreEdit(openEditGeneric);
+openDischargeEdit=htSafeguardCoreEdit(openDischargeEdit);
 // ガイド設定は録音中に編集しても、開始したセッションの内容をスナップショットで使用。
 // 画面が非表示になるとWeb Speechは保証されないので安全に案内停止。記録時刻は維持。
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&guideAudio.session)guideStop();});
