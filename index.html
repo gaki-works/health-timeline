@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'none'; object-src 'none'; frame-src 'self' blob:; form-action 'none'; base-uri 'none'">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>health-timeline | 健康・症状記録</title>
 <style>
 :root {
@@ -772,6 +772,7 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
       </details>
     </div>
     <div class="card"><h2>タブの並べ替え</h2><div class="hint">よく使う項目を上に移動できます。順番はこのブラウザに保存されます。</div><div id="tabOrderControls"></div></div>
+    <div id="criticalSaveWarning" role="alert" hidden style="position:sticky;top:4px;z-index:9000;background:#7f1d1d;color:white;border:2px solid #fca5a5;border-radius:10px;padding:14px;margin-bottom:12px;font-weight:700"></div>
     <div class="card">
       <h2>完全バックアップ・復元</h2>
       <div class="hint">JSON形式で日時のミリ秒・詳細記録・写真などを保存します。新アプリへ移行する前に必ず作成してください。バックアップには個人情報が含まれます。</div>
@@ -779,7 +780,7 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none">
       <button class="ghost-btn" id="importJsonBtn">完全バックアップから復元</button>
     </div><div class="card"><h2>アプリの更新とホーム画面</h2><div class="hint">既にホーム画面に追加したアプリは、通常は削除・再追加せず同じURLで更新できます。記録が消えるおそれがあるため、古いアプリは削除しないでください。</div><button type="button" class="ghost-btn" id="safeReloadApp">更新のため画面を再読み込み</button><button type="button" class="ghost-btn" id="safeInstallHelp">ホーム画面に追加する方法</button></div><div class="card"><h2>データを書き出す</h2>
-      <div class="hint">記録されているすべてのデータをCSVファイルとして、この端末内で生成します。外部サーバーへは送信されません。書き出したファイルには症状などの個人情報が含まれるため、取り扱いにご注意ください。</div>
+      <div class="hint">CSVは記録の一部を書き出すための形式で、写真・測定や運動の一部・設定などは含まれません。機種変更や完全バックアップには必ず上の「JSON」を使用してください。CSVにも健康情報が含まれるので共有にはご注意ください。</div>
       <button class="primary-btn" id="exportCsvBtn">⬇ データを書き出す（CSV）</button>
     </div>
     <div class="card">
@@ -789,15 +790,11 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
       <button class="ghost-btn" id="importCsvBtn">⬆ CSVを取り込む</button>
       <div class="note" style="margin-top:10px">取り込む前に内容を確認する画面が表示されます。取り込みもこの端末内だけで行われ、外部サーバーには送信されません。</div>
     </div>
+    <button type="button" class="ghost-btn" id="undoLastDeletion" hidden style="margin-bottom:12px">↩ 直前に削除した記録を元に戻す</button>
     <div class="card">
       <h2>データの削除</h2>
-      <div class="hint">この端末に保存されている記録をすべて削除します。削除すると元に戻せません。</div>
+      <div class="hint">この操作は復元できません。JSONを端末外にも保管し、ファイルアプリで確認してから操作してください。</div>
       <button class="primary-btn danger-btn" id="deleteAllBtn">すべてのデータを削除する</button>
-    </div>
-    <div class="card">
-      <h2>ホーム画面に追加・HTML保存</h2>
-      <div class="hint">iPhoneでアプリのように使うには、Safariで公開URLを開き、共有メニューから「ホーム画面に追加」を選びます。HTML保存はアプリ本体のファイルを取得する別の操作です。</div>
-      <button class="download-app-btn" id="downloadAppBtn" style="margin-top:0">📥 HTMLファイルをダウンロード（記録データは含まれません）</button>
     </div>
     <div class="note">データはご利用のブラウザ（localStorage）内にのみ保存されます。アカウント登録・クラウド保存・広告・アクセス解析はこのHTMLから行いません。ただしGitHub PagesへのアクセスやOSの音声機能には各サービスの通信・ログが伴う場合があります。</div>
   </div>
@@ -1056,10 +1053,19 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
   </div>
 </div>
 
+<!-- 写真閲覧: 端末内の記録に保存された画像だけを表示し外部へ送信しない -->
+<div id="mealPhotoViewer" role="dialog" aria-modal="true" aria-label="保存した食事写真" style="display:none;position:fixed;inset:0;z-index:11000;background:rgba(0,0,0,.92);padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+  <button type="button" id="mealPhotoViewerClose" style="align-self:flex-end;min-height:44px;padding:10px 18px;border:2px solid #fff;border-radius:9px;background:#334155;color:#fff;font-weight:700">✕ 写真を閉じる</button>
+  <img id="mealPhotoViewerImage" alt="保存済みの食事写真" style="max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px">
+  <div style="color:#fff;font-size:12px">2本指で拡大できます</div>
+</div>
 <!-- 診察用サマリー ポップアップ代替表示 -->
 <div id="doctorFallbackOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;padding:env(safe-area-inset-top,12px) 0 env(safe-area-inset-bottom,0);">
   <div style="height:100%;background:#fff;display:flex;flex-direction:column;">
     <div style="padding:10px 12px;border-bottom:1px solid #ddd;display:flex;justify-content:flex-end;gap:8px;position:sticky;top:0;z-index:3;background:#fff;flex-wrap:wrap;">
+      <button type="button" id="doctorZoomOut" aria-label="医師用資料を縮小" style="padding:8px 11px;border:1px solid #64748b;border-radius:8px;background:#f1f5f9;color:#0f172a;font-weight:700;min-height:44px">－</button>
+      <span id="doctorZoomLabel" style="align-self:center;font-size:13px;color:#0f172a;min-width:38px;text-align:center">100%</span>
+      <button type="button" id="doctorZoomIn" aria-label="医師用資料を拡大" style="padding:8px 11px;border:1px solid #64748b;border-radius:8px;background:#f1f5f9;color:#0f172a;font-weight:700;min-height:44px">＋</button>
       <button id="doctorFallbackPrint" style="padding:8px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;">印刷 / PDF</button>
       <button id="doctorFallbackClose" style="padding:8px 12px;border:2px solid #334155;border-radius:8px;background:#334155;color:#ffffff!important;font-weight:700;min-height:44px;">← アプリに戻る</button>
     </div>
@@ -1176,7 +1182,7 @@ function editedOptionalEnd(dateId,timeId,original){
 }
 function safeJsonScript(value){return JSON.stringify(value).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');}
 function safeText(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function escCsv(v){ v = (v===null||v===undefined) ? '' : String(v); if(/[",\n]/.test(v)){ v = '"'+v.replace(/"/g,'""')+'"'; } return v; }
+function escCsv(v){ v = (v===null||v===undefined) ? '' : String(v); if(/^[\t\r\n ]*[=+@]/.test(v)||/^[\t\r\n ]*-[^0-9]/.test(v))v="'"+v; if(/[",\n]/.test(v)){ v = '"'+v.replace(/"/g,'""')+'"'; } return v; }
 
 /* =========================================================
    データ管理（v4）
@@ -1249,23 +1255,39 @@ function loadData(){
     if(raw){
       appData = JSON.parse(raw);
       ensureArrays();
+      window.__htCoreSnapshot=raw;
     } else {
       appData = defaultData();
+      window.__htCoreSnapshot=null;
       migrateFromV3();
       ensureArrays();
       saveData();
     }
   }catch(e){
-    dataLoadFailed=true;appData=defaultData();console.error('既存データを読み込めません。上書きを停止しました',e);
+    dataLoadFailed=true;appData=defaultData();window.__htCoreSnapshot=undefined;console.error('既存データを読み込めません。上書きを停止しました',e);
     setTimeout(()=>alert('既存の保存データを読み込めませんでした。データ保護のため、保存を停止しています。ブラウザデータを削除せず、元のCSVを保管してください。'),0);
   }
   prevLastActiveAt = appData.lastActiveAt || null;
 }
 function saveData(){
-  if(dataLoadFailed)return false;
-  try{ localStorage.setItem(STORAGE_KEY_V4, JSON.stringify(appData)); return true; }
-  catch(e){ console.error('データ保存エラー', e); return false; }
+  if(dataLoadFailed){showCriticalSaveWarning('既存データを読み込めないため、保存を停止しました。');return false;}
+  if(window.__htRestoring){return false;}
+  try{
+    const disk=localStorage.getItem(STORAGE_KEY_V4);
+    if(window.__htCoreSnapshot!==undefined && disk!==window.__htCoreSnapshot){
+      showCriticalSaveWarning('別の画面でデータが更新されました。上書きを停止しています。バックアップ後、アプリを開き直してください。');return false;
+    }
+    const next=JSON.stringify(appData);
+    localStorage.setItem(STORAGE_KEY_V4,next);window.__htCoreSnapshot=next;
+    const badge=document.getElementById('criticalSaveWarning');if(badge)badge.hidden=true;
+    return true;
+  }catch(e){console.error('データ保存エラー',e);showCriticalSaveWarning('保存できませんでした。記録が未保存の可能性があります。画面を閉じず空き容量とバックアップを確認してください。');return false;}
 }
+function showCriticalSaveWarning(msg){
+  const badge=document.getElementById('criticalSaveWarning');if(badge){badge.textContent='⚠ '+msg;badge.hidden=false;}
+  if(!window.__htWarningAt||Date.now()-window.__htWarningAt>6000){window.__htWarningAt=Date.now();alert(msg);}
+}
+
 function touchActive(){
   appData.lastActiveAt = Date.now();
   saveData();
@@ -1566,6 +1588,40 @@ function renderActivePanel(){
   });
 }
 
+// 最後に削除した一件だけ、安全に取り消せるようにする（端末内のみ）。
+let lastDeletedCoreSnapshot=null;
+function deleteCoreRecordSafely(key,id,label){
+  const arr=appData[key];if(!Array.isArray(arr))return false;
+  const matches=arr.filter(r=>String(r.id)===String(id));
+  if(matches.length!==1){alert('同じIDの記録が複数あるか、記録が見つかりません。誤削除を防ぐため中止しました。');return false;}
+  if(!confirm('「'+label+'」の記録を削除しますか？あとから取り消せます。'))return false;
+  const snapshot=JSON.stringify(appData);appData[key]=arr.filter(r=>String(r.id)!==String(id));
+  if(!saveData()){appData=JSON.parse(snapshot);return false;}
+  lastDeletedCoreSnapshot={before:snapshot,after:window.__htCoreSnapshot};
+  const undo=document.getElementById('undoLastDeletion');if(undo)undo.hidden=false;
+  return true;
+}
+function undoLastCoreDeletion(){
+  if(!lastDeletedCoreSnapshot)return;
+  // 削除後に別の記録が保存されていた場合は、古いスナップショットで上書きしない。
+  if(window.__htCoreSnapshot!==lastDeletedCoreSnapshot.after){
+    alert('削除後にほかの記録が変更されたため、古い状態には戻せません。既存の記録を守るため取り消しを中止しました。');return;
+  }
+  const current=JSON.stringify(appData),restored=JSON.parse(lastDeletedCoreSnapshot.before);
+  appData=restored;
+  if(!saveData()){appData=JSON.parse(current);return;}
+  lastDeletedCoreSnapshot=null;document.getElementById('undoLastDeletion').hidden=true;
+  refreshAfterSafeDataChange();
+}
+function refreshAfterSafeDataChange(){
+  [renderRecordsList,renderSymptomHistory,renderMenstrualHistory,renderDischargeHistory,renderLifestyleHistory,renderMenstrualChart,renderTimeline,renderTrend,renderUnifiedHistory].forEach(fn=>{try{fn();}catch(e){console.warn('再描画',e);}});
+}
+const undoGlobalButton=document.getElementById('undoLastDeletion');
+if(undoGlobalButton){
+  document.body.appendChild(undoGlobalButton);
+  Object.assign(undoGlobalButton.style,{position:'fixed',bottom:'calc(env(safe-area-inset-bottom, 0px) + 16px)',left:'50%',transform:'translateX(-50%)',zIndex:'12000',background:'#047857',color:'#fff',border:'2px solid #86efac',borderRadius:'12px',padding:'13px 18px',fontWeight:'700',boxShadow:'0 8px 24px #0008',maxWidth:'90vw',width:'max-content'});
+  undoGlobalButton.addEventListener('click',undoLastCoreDeletion);
+}
 /* =========================================================
    痛み記録一覧
 ========================================================= */
@@ -1718,10 +1774,10 @@ function renderSymptomChips(){
   const grid = document.getElementById('symptomChipGrid');
   grid.innerHTML = GENERAL_SYMPTOMS.map(sym => {
     const detail = sym.kind === 'temp'
-      ? `<div class="symptom-choice-temp"><input type="number" min="30" max="43" step="0.1" value="37.5" data-temp-for="${sym.key}" aria-label="${sym.label}の体温"></div>`
-      : `<div class="symptom-range-wrap"><div class="symptom-range-value" data-symptom-value="${sym.key}">強さを選択：0</div><input type="range" class="pain-slider symptom-range" data-symptom-range="${sym.key}" min="0" max="10" step="1" value="0"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div>`;
-    return `<div class="symptom-choice" data-key="${sym.key}">
-      <div class="symptom-choice-head"><div class="symptom-chip" data-key="${sym.key}">${sym.label}</div></div>
+      ? `<div class="symptom-choice-temp"><input type="number" min="30" max="43" step="0.1" value="37.5" data-temp-for="${safeText(sym.key)}" aria-label="${safeText(sym.label)}の体温"></div>`
+      : `<div class="symptom-range-wrap"><div class="symptom-range-value" data-symptom-value="${safeText(sym.key)}">強さを選択：0</div><input type="range" class="pain-slider symptom-range" data-symptom-range="${safeText(sym.key)}" min="0" max="10" step="1" value="0"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div>`;
+    return `<div class="symptom-choice" data-key="${safeText(sym.key)}">
+      <div class="symptom-choice-head"><div class="symptom-chip" data-key="${safeText(sym.key)}">${safeText(sym.label)}</div></div>
       <div class="symptom-choice-detail">${detail}</div>
     </div>`;
   }).join('');
@@ -1780,7 +1836,7 @@ renderSymptomChips();
 // タブ上に症状選択肢を常時表示し、選択後に詳細入力へ進む
 function renderSymptomQuickChoices(){
   const host=document.getElementById('symptomQuickChoices'); if(!host)return;
-  host.innerHTML=GENERAL_SYMPTOMS.map(sym=>`<button type="button" class="symptom-quick-choice" data-symptom-key="${sym.key}">${sym.label}</button>`).join('');
+  host.innerHTML=GENERAL_SYMPTOMS.map(sym=>`<button type="button" class="symptom-quick-choice" data-symptom-key="${safeText(sym.key)}">${safeText(sym.label)}</button>`).join('');
   host.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{
     startQuick('symptom',null,{symptomKey:btn.dataset.symptomKey});
   }));
@@ -1895,7 +1951,7 @@ function renderSymptomHistory(){
     </div>`;
   }).join('');
   el.querySelectorAll('[data-del-symptom]').forEach(b => {
-    b.addEventListener('click', (e) => { e.stopPropagation(); appData.symptomEvents = appData.symptomEvents.filter(r => r.id !== parseInt(b.getAttribute('data-del-symptom'),10)); saveData(); renderSymptomHistory(); renderTimeline(); renderTrend(); });
+    b.addEventListener('click', (e) => { e.stopPropagation(); if(deleteCoreRecordSafely('symptomEvents',b.getAttribute('data-del-symptom'),'症状')){ renderSymptomHistory(); renderTimeline(); renderTrend(); renderUnifiedHistory(); } });
   });
   el.querySelectorAll('[data-edit-symptom]').forEach(item => {
     item.addEventListener('click', () => openEditSymptom(parseInt(item.getAttribute('data-edit-symptom'),10)));
@@ -2059,14 +2115,14 @@ function renderMenstrualHistory(){
     ].filter(Boolean).join(' / ')) : '';
     return `<div class="record-item" data-edit-men="${r.id}">
       <div class="left"><div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${r.type}</b>${detail?('<span style="color:var(--muted);font-size:12px">'+detail+'</span>'):''}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${safeText(r.type)}</b>${detail?('<span style="color:var(--muted);font-size:12px">'+safeText(detail)+'</span>'):''}</div>
         <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.note?(' ／ '+safeText(r.note)):''}</div>
       </div></div>
       <button class="del-btn" data-del-men="${r.id}">✕</button>
     </div>`;
   }).join('');
   el.querySelectorAll('[data-del-men]').forEach(b=>{
-    b.addEventListener('click',e=>{e.stopPropagation();appData.menstrualEvents=appData.menstrualEvents.filter(r=>r.id!==parseInt(b.getAttribute('data-del-men'),10));saveData();renderMenstrualHistory();renderMenstrualChart();renderTimeline();});
+    b.addEventListener('click',e=>{e.stopPropagation();if(deleteCoreRecordSafely('menstrualEvents',b.getAttribute('data-del-men'),'月経・出血')){renderMenstrualHistory();renderMenstrualChart();renderTimeline();renderUnifiedHistory();}});
   });
   el.querySelectorAll('[data-edit-men]').forEach(item=>item.addEventListener('click',()=>openEditGeneric('menstrualEvents',parseInt(item.getAttribute('data-edit-men'),10),'生理・出血の記録')));
 }
@@ -2131,7 +2187,7 @@ function renderDischargeHistory(){
     </div>`;
   }).join('');
   el.querySelectorAll('[data-del-dis]').forEach(b => {
-    b.addEventListener('click', () => { appData.dischargeEvents = appData.dischargeEvents.filter(r => r.id !== parseInt(b.getAttribute('data-del-dis'),10)); saveData(); renderDischargeHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); });
+    b.addEventListener('click', () => { if(deleteCoreRecordSafely('dischargeEvents',b.getAttribute('data-del-dis'),'おりもの')){ renderDischargeHistory(); renderMenstrualChart(); renderTimeline(); renderTrend();renderUnifiedHistory(); } });
   });
 }
 
@@ -2964,6 +3020,7 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
   const htmlContent = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>症状経過サマリー - 診察用提出シート</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #0f172a; background: #fff; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+    @media print { body { zoom:1!important; } }
     h1 { font-size: 22px; border-bottom: 3px solid #2563eb; padding-bottom: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap:wrap; }
     h2 { font-size: 16px; background: #f1f5f9; padding: 8px 12px; border-left: 5px solid #2563eb; margin-top: 24px; margin-bottom: 12px; border-radius: 0 6px 6px 0; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
@@ -2973,6 +3030,8 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
     .doctor-chart-panel{width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#fff}
     .doctor-chart-title{font-size:12px;font-weight:700;color:#334155;margin-bottom:4px}
     .doctor-chart-canvas{display:block!important;width:100%!important;height:180px!important;max-width:100%!important}
+    .doctor-print-image{display:none;max-width:100%;width:100%;height:auto;object-fit:contain}
+    .doctor-chart-svg{overflow:visible;touch-action:pan-x pan-y pinch-zoom}
     .doctor-range-row{display:flex;flex-direction:column;align-items:stretch;gap:7px;margin:0 0 8px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px}
     .doctor-range-row label{font-size:13px;font-weight:700;color:#334155}
     .doctor-period-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
@@ -2999,6 +3058,8 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
       body.print-details .detail-records .history-body{display:block!important}
       .doctor-graph-page .chart-box{height:105mm!important;box-sizing:border-box;overflow:hidden;}
       .doctor-graph-page .doctor-chart-svg{height:96mm!important}
+      .doctor-graph-page.chart-print-ready .doctor-chart-svg{display:none!important}
+      .doctor-graph-page.chart-print-ready .doctor-print-image{display:block!important;max-height:96mm!important;width:100%!important;height:auto!important;object-fit:contain!important;break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}
       .doctor-graph-page h1{font-size:17px;margin:0 0 5mm;padding-bottom:2mm}.doctor-graph-page h2{font-size:13px;margin:2mm 0}.doctor-graph-page p{font-size:9px!important;margin-top:2mm!important}.doctor-graph-page .doctor-range-note{font-size:10px}.doctor-summary-page h1{margin:0 0 4mm}.doctor-summary-page h2{margin:3mm 0}.doctor-summary-page{break-after:auto;page-break-after:auto} .detail-records table{font-size:10px} .detail-records tr{break-inside:avoid}
     }
   </style></head><body>
@@ -3010,6 +3071,7 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
     <div class="chart-box" style="height:auto;">
       <div class="doctor-chart-title" id="doctorChartTitle">期間に応じた時間間隔で表示（0〜10／有無は0・1）</div>
       <div id="docCombinedSvg" class="doctor-chart-svg"></div>
+      <img id="doctorPrintImage" class="doctor-print-image" alt="診察用グラフ（印刷用画像）">
     </div>
     <p style="font-size:11px;color:#64748b;margin-top:6px;">各線は項目別の記録値です（体温・血圧など単位の異なる身体測定値はサマリに表示）。痛み・症状・出血量は記録された強さや量、有無で記録する項目（服薬・入浴など）は0／1、排尿は各時間帯の回数、水分補給は100ml単位を目安に表示します。空白は記録なしであり、症状がなかったことを意味しません。記録のない時間帯は0で補完しません。</p>
   </div>
@@ -3044,7 +3106,40 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
 
   <script>
     let printWasOpen=false;
-    function prepareDoctorPrint(){const d=document.querySelector('.detail-records');printWasOpen=!!d?.open;document.body.classList.toggle('print-details',!!document.getElementById('includeDetailsPrint').checked);if(d&&document.body.classList.contains('print-details'))d.open=true;window.print();}
+    async function prepareDoctorPrint(){
+      const d=document.querySelector('.detail-records');printWasOpen=!!d?.open;
+      document.body.classList.toggle('print-details',!!document.getElementById('includeDetailsPrint').checked);
+      if(d&&document.body.classList.contains('print-details'))d.open=true;
+      await prepareDoctorChartImage();
+      window.print();
+    }
+    let doctorPrintRenderTask=null;
+    async function prepareDoctorChartImage(){
+      if(doctorPrintRenderTask)return doctorPrintRenderTask;
+      doctorPrintRenderTask=(async()=>{
+        const source=document.querySelector('#docCombinedSvg svg');
+        const img=document.getElementById('doctorPrintImage');
+        const page=document.querySelector('.doctor-graph-page');
+        if(!source||!img||!page)return false;
+        try{
+          const xml=new XMLSerializer().serializeToString(source);
+          const blob=new Blob([xml],{type:'image/svg+xml;charset=utf-8'});
+          const url=URL.createObjectURL(blob);
+          const raw=new Image();
+          await new Promise((resolve,reject)=>{raw.onload=resolve;raw.onerror=reject;raw.src=url;});
+          const vb=source.viewBox.baseVal;
+          const w=Math.max(1,Math.round(vb.width||1800)), h=Math.max(1,Math.round(vb.height||760));
+          const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+          const ctx=cv.getContext('2d');if(!ctx)throw Error('Canvas unavailable');
+          ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);
+          ctx.drawImage(raw,0,0,w,h);
+          const png=cv.toDataURL('image/png');URL.revokeObjectURL(url);
+          await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=png;});
+          page.classList.add('chart-print-ready');return true;
+        }catch(e){console.warn('印刷用グラフ画像への変換に失敗。SVGのまま印刷します。',e);page.classList.remove('chart-print-ready');return false;}
+      })();
+      try{return await doctorPrintRenderTask;}finally{doctorPrintRenderTask=null;}
+    }
     window.addEventListener('afterprint',()=>{const d=document.querySelector('.detail-records');if(d)d.open=printWasOpen;document.body.classList.remove('print-details');});
     const painData = ${chartDataJson};
     const bleedingData = ${bleedingDataJson};
@@ -3147,7 +3242,7 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
       activeNames.forEach((name,si)=>{let prev=null;rows.forEach((row,i)=>{const val=row.values[name];if(val===undefined){prev=null;return;}const x=X(i),y=Y(Math.min(10,val));if(prev&&i-prev.i===1)svg+=\`<line x1="\${prev.x}" y1="\${prev.y}" x2="\${x}" y2="\${y}" stroke="\${colors[si%colors.length]}" stroke-width="2" opacity=".82"/>\`;svg+=\`<circle cx="\${x}" cy="\${y}" r="2.5" fill="\${colors[si%colors.length]}"/>\`;prev={i,x,y};});const ly=padT+si*16;if(ly<H-8)svg+=\`<line x1="\${W-padR+12}" y1="\${ly}" x2="\${W-padR+27}" y2="\${ly}" stroke="\${colors[si%colors.length]}" stroke-width="3"/><text x="\${W-padR+32}" y="\${ly+4}" font-size="11" fill="#334155">\${escSvg(name)}</text>\`;});
       const title=document.getElementById('doctorChartTitle');if(title)title.textContent=intervalLabel+'の記録値を共通の時間軸で表示（0〜10／有無は0・1）';holder.innerHTML=activeNames.length?svgShell(W,H,svg):'<p style="padding:24px;color:#64748b">この期間にグラフ化できる記録はありません。</p>';
     }
-    window.onload=function(){ renderDoctorCharts(); setTimeout(renderDoctorCharts,80); window.addEventListener('resize',renderDoctorCharts); };
+    window.onload=function(){ renderDoctorCharts(); setTimeout(()=>{renderDoctorCharts();prepareDoctorChartImage();},80); window.addEventListener('resize',renderDoctorCharts); };
   <\/script>
   </body></html>`;
   if(win){
@@ -3159,6 +3254,15 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
   const frame = document.getElementById('doctorFallbackFrame');
   frame.srcdoc = htmlContent;
   overlay.style.display = 'block';
+  let reportZoom=1;
+  const updateReportZoom=()=>{
+    try{const body=frame.contentDocument?.body;if(body){body.style.zoom=String(reportZoom);body.style.maxWidth='none';}}
+    catch(err){console.warn('拡大操作',err);}
+    const label=document.getElementById('doctorZoomLabel');if(label)label.textContent=Math.round(reportZoom*100)+'%';
+  };
+  document.getElementById('doctorZoomOut').onclick=()=>{reportZoom=Math.max(.75,Math.round((reportZoom-.25)*100)/100);updateReportZoom();};
+  document.getElementById('doctorZoomIn').onclick=()=>{reportZoom=Math.min(2.5,Math.round((reportZoom+.25)*100)/100);updateReportZoom();};
+  frame.addEventListener('load',updateReportZoom,{once:true});
   document.body.style.overflow = 'hidden';
   document.getElementById('doctorFallbackClose').onclick = () => {
     frame.srcdoc = '';
@@ -3166,7 +3270,7 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
     document.body.style.overflow = '';
   };
   document.getElementById('doctorFallbackPrint').onclick = () => {
-    try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){}
+    try{ frame.contentWindow.focus(); if(typeof frame.contentWindow.prepareDoctorPrint==='function')frame.contentWindow.prepareDoctorPrint(); else frame.contentWindow.print(); }catch(e){alert('印刷画面を開けませんでした。');}
   };
 });
 
@@ -3344,48 +3448,64 @@ function buildImportedRecord(row, header){
   return {id,key:cls.key,record:{id:id||appData.nextId++,startTs,endTs,note,recordedAt,entryType}};
 }
 
-function applyImportedRows(rows){
-  const header = rows[0].map(v => String(v).trim());
-  const required = ['開始日','開始時刻','イベント種別'];
-  if(!required.every(x => header.includes(x))) throw new Error('このアプリのCSV形式ではありません。\n「開始日」「開始時刻」「イベント種別」の列が必要です。');
-  const imported = [];
-  const errors = [];
-  rows.slice(1).forEach((row, idx) => {
-    try{ imported.push(buildImportedRecord(row, header)); }
-    catch(e){ errors.push((idx+2)+'行目: '+e.message); }
-  });
-  if(errors.length) throw new Error(errors.slice(0,8).join('\n') + (errors.length>8 ? `\nほか${errors.length-8}件` : ''));
-
-  let added=0, updated=0;
-  imported.forEach(item => {
-    if(item.id != null){
-      const existing = findRecordById(item.id);
-      if(existing){
-        if(existing.key !== item.key) throw new Error('ID '+item.id+' のイベント種別が既存データと一致しません');
-        // 旧CSVは日時が分単位。元記録の同じ分なら秒・ミリ秒を守る。
-        const original=existing.record, incoming={...item.record};
-        const sameMinute=(a,b)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.floor(Number(a)/60000)===Math.floor(Number(b)/60000);
-        const sameStart=sameMinute(original.startTs,incoming.startTs);
-        const sameEnd=(original.endTs==null&&incoming.endTs==null)||sameMinute(original.endTs,incoming.endTs);
-        if(sameStart) incoming.startTs=original.startTs;
-        if(sameEnd) incoming.endTs=original.endTs;
-        if(sameStart&&sameEnd && original.durationSec!=null)incoming.durationSec=original.durationSec;
-        if(sameMinute(original.recordedAt,incoming.recordedAt))incoming.recordedAt=original.recordedAt;
-        if(item.key==='symptomEvents'&&original.type)incoming.type=original.type;
-        Object.assign(original,incoming,{id:item.id});
-        updated++;
-        return;
+function prepareImportedRows(rows){
+  const header=rows[0].map(v=>String(v).trim());
+  if(!['開始日','開始時刻','イベント種別'].every(x=>header.includes(x)))throw Error('CSV形式が違います。必要な列を確認してください');
+  const original=appData, staged=JSON.parse(JSON.stringify(appData));
+  let added=0,updated=0,collisions=0,imported=[];
+  try{
+    // buildImportedRecord がID採番する場合もステージングデータだけに反映。
+    appData=staged;
+    const errs=[];
+    rows.slice(1).forEach((row,i)=>{try{imported.push(buildImportedRecord(row,header));}catch(e){errs.push((i+2)+'行目: '+e.message);}});
+    if(errs.length)throw Error(errs.slice(0,8).join('\n')+(errs.length>8?'\nほか'+(errs.length-8)+'件':''));
+    const known=new Set();
+    for(const entry of imported){
+      if(!Array.isArray(staged[entry.key]))throw Error('未知の記録分類です：'+entry.key);
+      const originalId=entry.id!=null?Number(entry.id):null;
+      if(originalId!=null && (!Number.isSafeInteger(originalId)||originalId<1))throw Error('不正なIDです');
+      if(originalId!=null){
+        const signature=entry.key+':'+originalId;
+        if(known.has(signature))throw Error('CSV内に重複IDがあります：'+signature);
+        known.add(signature);
+        const existing=findRecordById(originalId);
+        if(existing){
+          // 同名のIDが違う種類／別日時だったら、上書きせず新規採番。
+          const sameMinute=(a,b)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.floor(Number(a)/60000)===Math.floor(Number(b)/60000);
+          if(existing.key!==entry.key||!sameMinute(existing.record.startTs,entry.record.startTs)){
+            entry.record.id=staged.nextId++;staged[entry.key].push(entry.record);added++;collisions++;continue;
+          }
+          const incoming={...entry.record};
+          if(sameMinute(existing.record.startTs,incoming.startTs))incoming.startTs=existing.record.startTs;
+          if(existing.record.endTs==null&&incoming.endTs==null||sameMinute(existing.record.endTs,incoming.endTs)){
+            incoming.endTs=existing.record.endTs;
+            if(existing.record.durationSec!=null)incoming.durationSec=existing.record.durationSec;
+          }
+          // CSVにない拡張フィールド（食事写真・排便詳細など）は既存値を維持する。
+          const protectedFields=['photoData','bowelSelections','bowelStates','colorTags','clarityTags','stateTags','textureTags','sessionId'];
+          for(const key of protectedFields)if((incoming[key]===undefined||incoming[key]===null||Array.isArray(incoming[key])&&incoming[key].length===0)&&existing.record[key]!==undefined)delete incoming[key];
+          Object.assign(existing.record,incoming,{id:originalId});updated++;continue;
+        }
       }
+      entry.record.id=originalId!=null?originalId:staged.nextId++;
+      if(entry.record.id>=staged.nextId)staged.nextId=entry.record.id+1;
+      staged[entry.key].push(entry.record);added++;
     }
-    item.record.id = item.id != null ? item.id : appData.nextId++;
-    if(item.record.id >= appData.nextId) appData.nextId = item.record.id + 1;
-    appData[item.key].push(item.record);
-    added++;
-  });
-  saveData();
-  renderRecordsList(); renderChart(); renderTimeline(); renderTrend();
-  renderSymptomHistory(); renderMenstrualHistory(); renderMenstrualChart(); renderDischargeHistory(); renderLifestyleHistory(); renderActiveSymptomSessions();
-  return {added,updated,total:imported.length};
+    // IDの整合性を再検査
+    const seen=new Set();let max=0;
+    for(const key of ['painRecords','noPainRecords','symptomEvents','menstrualEvents','dischargeEvents','sleepEvents','wellnessEvents','lifestyleEvents']){
+      for(const r of staged[key]){const id=Number(r.id);if(!Number.isSafeInteger(id)||id<1||seen.has(id))throw Error('既存記録またはCSVに重複ID・不正IDがあります：'+r.id);seen.add(id);max=Math.max(id,max);}
+    }
+    staged.nextId=Math.max(Number(staged.nextId)||1,max+1);
+    return {staged,added,updated,collisions,total:imported.length};
+  }finally{appData=original;}
+}
+function applyImportedRows(rows,ready=null){
+  const result=ready||prepareImportedRows(rows),before=appData;
+  appData=result.staged;
+  if(!saveData()){appData=before;throw Error('保存できませんでした。既存記録は変更していません。');}
+  refreshAfterSafeDataChange();renderChart();
+  return result;
 }
 
 document.getElementById('importCsvBtn').addEventListener('click', () => {
@@ -3401,10 +3521,13 @@ document.getElementById('importCsvFile').addEventListener('change', async (e) =>
     if(rows.length < 2) throw new Error('CSVに取り込めるデータ行がありません');
     const header = rows[0].map(v => String(v).trim());
     if(!header.includes('イベント種別')) throw new Error('このCSVには「イベント種別」列がありません');
-    const count = rows.length - 1;
-    if(!confirm(`CSVを読み込みました。\n\nデータ行：${count}件\n\n既存IDは更新し、存在しないIDは追加します。CSVから削除された行はアプリ側では削除しません。\n\nこの内容を取り込みますか？`)) return;
-    const result = applyImportedRows(rows);
-    alert(`CSVを取り込みました。\n\n新規追加：${result.added}件\n更新：${result.updated}件`);
+    const ready=prepareImportedRows(rows);
+    const details=`データ行：${ready.total}件\n新規追加：${ready.added}件\n既存IDの更新：${ready.updated}件\n別記録とのID衝突：${ready.collisions}件（別IDで追加）`;
+    if(!confirm('CSV取り込みプレビュー\n\n'+details+'\n\n変更前のJSONバックアップを保存しますか？'))return;
+    safeDownloadJson(safeExportObject(),'health-timeline-before-csv');
+    if(!confirm(details+'\n\n退避JSONがファイルアプリに保存されたことを確認しましたか？\nOKで取り込みます。'))return;
+    const result=applyImportedRows(rows,ready);
+    alert('CSV取り込み完了。\n新規追加：'+result.added+'件\n更新：'+result.updated+'件');
   }catch(err){
     alert('CSVを取り込めませんでした。\n\n'+(err.message || err));
   }
@@ -3413,18 +3536,23 @@ document.getElementById('importCsvFile').addEventListener('change', async (e) =>
 /* =========================================================
    データ削除
 ========================================================= */
-document.getElementById('deleteAllBtn').addEventListener('click', () => {
-  if(!confirm('この端末に保存されている症状記録をすべて削除します。\n削除後はこのアプリから復元できません。\n本当によろしいですか？')) return;
-  if(!confirm('最終確認：本当にすべてのデータを削除しますか？')) return;
-  try{ localStorage.removeItem(STORAGE_KEY_V4); }catch(e){}
-  appData = defaultData();
-  saveData();
-  activeSessions = {};
-  activeSymptomSessions = {};
-  renderBodyMap(); renderActivePanel(); renderRecordsList(); renderChart(); renderTimeline(); renderTrend();
-  renderSymptomHistory(); renderMenstrualHistory(); renderMenstrualChart(); renderDischargeHistory(); renderLifestyleHistory(); renderActiveSymptomSessions();
-  document.getElementById('candidateHolder').innerHTML = '';
-  alert('すべてのデータを削除しました');
+document.getElementById('deleteAllBtn').addEventListener('click',()=>{
+  alert('安全のため、削除前に完全バックアップを作成します。保存先を確認してから操作してください。');
+  try{safeDownloadJson(safeExportObject(),'health-timeline-before-delete');}catch(e){alert('バックアップを作成できず、削除は中止しました。'+e.message);return;}
+  if(prompt('バックアップが「ファイル」アプリに保存されたことを確認した場合だけ、全データ削除のため「全削除」と入力してください。')!=='全削除')return;
+  if(!confirm('最終確認：記録・設定・計測中のデータをこのアプリから削除します。元には戻せません。実行しますか？'))return;
+  const snapshot={};for(const key of BACKUP_KEYS)snapshot[key]=localStorage.getItem(key);
+  const previous=appData;
+  window.__htRestoring=true;
+  try{
+    for(const key of BACKUP_KEYS)localStorage.removeItem(key);
+    appData=defaultData();activeSessions={};activeSymptomSessions={};window.__htCoreSnapshot=null;
+    alert('記録・設定の削除が完了しました。画面を更新します。');location.reload();
+  }catch(err){
+    let failed=false;for(const [k,v] of Object.entries(snapshot))try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(_){failed=true;}
+    appData=previous;window.__htRestoring=false;window.__htCoreSnapshot=localStorage.getItem(STORAGE_KEY_V4);
+    alert('削除に失敗。'+(failed?'元に戻せない項目があります。退避JSONを保管してください。':'元の状態に戻しました。')+' '+err.message);
+  }
 });
 
 /* 記録空白への自動ポップアップはユーザー希望により廃止しました。
@@ -3450,16 +3578,8 @@ document.getElementById('showPrivacyBtnTop').addEventListener('click', () => {
 /* =========================================================
    アプリ本体保存
 ========================================================= */
-document.getElementById('downloadAppBtn').addEventListener('click', () => {
-  const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `症状の記録_アプリ.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-});
+// セキュリティ: DOM全体を書き出す「アプリ本体保存」は廃止。
+// outerHTMLに表示中の健康記録・診察用srcdocが混入し得るため。
 
 /* v11: タイムラインから医師用表示へ1タップ */
 document.getElementById('timelineDoctorShortcut')?.addEventListener('click', () => {
@@ -3510,8 +3630,9 @@ document.getElementById('closeSubmitBtn').addEventListener('click',()=>{
 /* =========================================================
    ブラウザ離脱時も記録中セッションを維持
 ========================================================= */
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistActivePainSessions(); });
-window.addEventListener('pagehide',persistActivePainSessions);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&!window.__htRestoring) persistActivePainSessions(); });
+window.addEventListener('pagehide',()=>{if(!window.__htRestoring)persistActivePainSessions();});
+window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY_V4&&e.newValue!==window.__htCoreSnapshot){showCriticalSaveWarning('他の画面で健康記録が変更されました。この画面での保存を停止します。新しい画面で開き直してください。');}});
 
 /* =========================================================
    初期化
@@ -3656,8 +3777,8 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigateTo(b.dat
 const DRINK_PRESET_KEY='healthTimeline_drinkPresets_v1';
 const MEDICINE_PRESET_KEY='healthTimeline_medicinePresets_v1';
 const BASE_DRINKS=[{id:'builtin-water',name:'水',ml:200},{id:'builtin-tea',name:'お茶',ml:200},{id:'builtin-coffee',name:'コーヒー',ml:200}];
-function readPresets(key){try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string'):[];}catch(e){return [];}}
-function savePresets(key,items){try{localStorage.setItem(key,JSON.stringify(items));return true;}catch(e){alert('登録内容を保存できませんでした。空き容量を確認してください');return false;}}
+function readPresets(key){try{const raw=localStorage.getItem(key);const v=raw===null?[]:JSON.parse(raw);if(!Array.isArray(v))throw Error('CORRUPT_EXISTING');return v.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string');}catch(e){showCriticalSaveWarning('登録内容の読み取りに失敗しました。元のデータを削除せず保存を停止してください。');return [];}}
+function savePresets(key,items){try{const old=localStorage.getItem(key);if(old!==null&&!Array.isArray(JSON.parse(old)))throw Error('既存設定が破損しています');localStorage.setItem(key,JSON.stringify(items));return true;}catch(e){alert('登録内容を保存できませんでした。既存データが破損しているか空き容量が不足しています。'+e.message);return false;}}
 function newPresetId(){return 'P'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
 let editingDrinkId=null,editingMedicineId=null,selectedMedicineId=null;
 function allDrinks(){const custom=readPresets(DRINK_PRESET_KEY);return [...BASE_DRINKS.filter(x=>!custom.some(y=>y.id===x.id)),...custom];}
@@ -3705,6 +3826,16 @@ function safeDownloadJson(obj,tag='health-timeline-backup'){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
   return json;
 }
+function updateLocalStorageUsage(){
+  const node=document.getElementById('localStorageUsage');if(!node)return;
+  try{
+    let n=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i),v=localStorage.getItem(k)||'';n+=(k.length+v.length)*2;}
+    const m=(n/(1024*1024)).toFixed(2);
+    node.textContent='このアプリの保存領域の概算使用量：'+m+'MB（実際の上限は端末・ブラウザによって異なります）。写真が増えると容量不足になる場合があります。';
+    node.style.color=n>3*1024*1024?'#fca5a5':'';
+  }catch(_){node.textContent='保存容量を読み取れません。';}
+}
+setTimeout(updateLocalStorageUsage,0);
 function backupJSON(){
   try{
     const data=safeExportObject();
@@ -3727,7 +3858,20 @@ function safeValidateBackup(value){
   if(!value.storage[STORAGE_KEY_V4])throw Error('主要な健康記録がありません');
   const core=JSON.parse(value.storage[STORAGE_KEY_V4]);
   if(!core||!Array.isArray(core.painRecords)||!Array.isArray(core.symptomEvents))throw Error('主要な健康記録の配列が読み取れません');
-  for(const [k,v] of Object.entries(core))if(/Records$|Events$/.test(k)&&!Array.isArray(v))throw Error('記録項目の構造が正しくありません：'+k);
+  const ids=new Set();let maxId=0;
+  for(const [k,v] of Object.entries(core))if(/Records$|Events$/.test(k)){
+    if(!Array.isArray(v))throw Error('記録項目の構造が正しくありません：'+k);
+    if(v.length>500000)throw Error('記録が多すぎます');
+    for(const rec of v){
+      if(!rec||typeof rec!=='object'||Array.isArray(rec))throw Error('記録の構造が違います：'+k);
+      const id=Number(rec.id);if(!Number.isSafeInteger(id)||id<1||ids.has(id))throw Error('重複または不正な記録ID：'+rec.id);
+      ids.add(id);maxId=Math.max(maxId,id);
+      if(rec.startTs!=null&&!Number.isFinite(Number(rec.startTs)))throw Error('日時が不正です：'+k);
+      if(rec.endTs!=null&&!Number.isFinite(Number(rec.endTs)))throw Error('終了日時が不正です：'+k);
+      for(const key of ['label','type','region','note','detail'])if(rec[key]!=null&&typeof rec[key]!=='string')throw Error('文字列の形式が違います：'+key);
+    }
+  }
+  if(Number(core.nextId)<=maxId)throw Error('次のIDが記録IDと矛盾しています');
   return {count:Object.values(core).filter(Array.isArray).reduce((n,rows)=>n+rows.length,0),keys:names.length};
 }
 document.getElementById('exportJsonBtn').onclick=backupJSON;
@@ -3748,13 +3892,15 @@ document.getElementById('importJsonFile').onchange=async e=>{
     const snapshot={};for(const k of BACKUP_KEYS)snapshot[k]=localStorage.getItem(k);
     try{
       // v1には新しい保存キーが存在しない。欠けたキーは消さず保持し、明示されたキーのみ復元。
+      window.__htRestoring=true;
       for(const [k,v] of Object.entries(backup.storage)){
-        if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);
+        if(v!==null)localStorage.setItem(k,v);
       }
-      for(const [k,v] of Object.entries(backup.storage))if(localStorage.getItem(k)!==v)throw Error('保存後の照合に失敗しました：'+k);
+      for(const [k,v] of Object.entries(backup.storage))if(v!==null&&localStorage.getItem(k)!==v)throw Error('保存後の照合に失敗しました：'+k);
     }catch(fail){
       let rollbackFailed=false;
       for(const [k,v] of Object.entries(snapshot))try{if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(_){rollbackFailed=true;}
+      window.__htRestoring=false;window.__htCoreSnapshot=localStorage.getItem(STORAGE_KEY_V4);
       throw Error('復元処理に失敗しました。'+(rollbackFailed?'元の状態への復帰にも失敗しました。退避JSONと旧アプリを保持し、操作を中止してください。':'元の記録に戻しました。')+' 原因：'+fail.message);
     }
     alert('復元が完了しました。画面を再読み込みします。');location.reload();
@@ -4034,12 +4180,28 @@ function renderUnifiedHistory(){
   host.innerHTML=events.length?events.slice(0,unifiedHistoryVisible).map(it=>{
     const subtitle=fmtDateStr(it.startTs)+' '+timeWithSeconds(it.startTs)+(it.endTs!=null && it.endTs>it.startTs?' ～ '+fmtDateStr(it.endTs)+' '+timeWithSeconds(it.endTs)+'　｜　経過 '+fmtDur((it.endTs-it.startTs)/1000):'');
     const id=String(it.ref?.id??'');
-    return `<div class="record-item"><div style="min-width:0;flex:1"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}</div><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button></div>`;
+    return `<div class="record-item"><div style="min-width:0;flex:1"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}${it.kind==='lifestyle' && it.ref?.photoData ? `<button type="button" class="history-photo-btn" data-photo-life-id="${safeText(id)}" style="min-height:44px;margin-top:6px;padding:7px 12px;background:#047857;color:white;border:0;border-radius:8px;font-weight:700">📷 写真を見る</button>` : ''}</div><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button></div>`;
   }).join(''):'<div class="empty">記録はありません</div>';
   const more=document.getElementById('unifiedHistoryMore');
   if(more)more.style.display=events.length>unifiedHistoryVisible?'block':'none';
   host.querySelectorAll('[data-uh-kind]').forEach(b=>b.addEventListener('click',()=>openUnifiedHistoryEdit(b.dataset.uhKind,b.dataset.uhId)));
+  host.querySelectorAll('[data-photo-life-id]').forEach(b=>b.addEventListener('click',()=>showMealPhotoFromHistory(b.dataset.photoLifeId)));
 }
+function showMealPhotoFromHistory(id){
+  const record=(appData?.lifestyleEvents||[]).find(r=>String(r.id)===String(id) && r.type==='食事');
+  if(!record || typeof record.photoData!=='string' || !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(record.photoData)){
+    alert('この記録の写真を表示できません。');return;
+  }
+  const viewer=document.getElementById('mealPhotoViewer');
+  document.getElementById('mealPhotoViewerImage').src=record.photoData;
+  viewer.style.display='flex';
+}
+function closeMealPhotoViewer(){
+  const viewer=document.getElementById('mealPhotoViewer');viewer.style.display='none';
+  document.getElementById('mealPhotoViewerImage').removeAttribute('src');
+}
+document.getElementById('mealPhotoViewerClose').addEventListener('click',closeMealPhotoViewer);
+document.getElementById('mealPhotoViewer').addEventListener('click',e=>{if(e.target.id==='mealPhotoViewer')closeMealPhotoViewer();});
 document.getElementById('unifiedHistoryMore')?.addEventListener('click',()=>{unifiedHistoryVisible+=10;renderUnifiedHistory();});
 function openUnifiedHistoryEdit(kind,id){
   if(['measure','breath','exercise'].includes(kind))return openExtraRecordEdit(kind,id);
@@ -4124,7 +4286,7 @@ function openExtraRecordEdit(kind,id){
 }
 // 保存処理の直後に共通履歴を更新（書き込みの成功判定は元の実装に委ねる）。
 const v55OriginalSaveData=saveData;
-saveData=function(...args){const result=v55OriginalSaveData(...args);if(result===false){const x=document.getElementById('safeSaveFailure');if(x)x.hidden=false;alert('保存に失敗しました。記録が未保存の可能性があります。画面を閉じず、バックアップと端末容量を確認してください。');}setTimeout(renderUnifiedHistory,0);return result;};
+saveData=function(...args){const result=v55OriginalSaveData(...args);if(result===false){const x=document.getElementById('safeSaveFailure');if(x)x.hidden=false;}setTimeout(renderUnifiedHistory,0);return result;};
 const v55OriginalWriteExtra=writeExtra;
 writeExtra=function(...args){const ok=v55OriginalWriteExtra(...args);if(ok)setTimeout(renderUnifiedHistory,0);else{const x=document.getElementById('safeSaveFailure');if(x)x.hidden=false;}return ok;};
 renderUnifiedHistory();
