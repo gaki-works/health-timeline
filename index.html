@@ -505,6 +505,10 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
 #safeDefaultRegistered .manage-row>span,#safeVoiceList .manage-row>span{min-width:0;flex:1;overflow-wrap:anywhere}
 #safeDefaultRegistered .manage-row button,#safeVoiceList .manage-row button{flex-shrink:0;min-height:40px}
 #safeVoiceSavedMessage:not(:empty){margin:10px 0;padding:10px;border:1px solid var(--border,#475569);border-radius:10px}
+
+/* v5.10.1: registered setting editing is a visible, reachable action on mobile */
+#safeDefaultRegistered .manage-row button,#safeVoiceList .manage-row button{cursor:pointer;touch-action:manipulation;position:relative;z-index:1}
+#safeDefaultTarget,#safeVoiceName{scroll-margin-top:95px}
 </style>
 </head>
 <body>
@@ -752,7 +756,7 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
    <div id="safeMeasureDefaultManager"></div>
  </div></details>
       <details class="settings-preset-panel" id="exerciseManager"><summary>🏃 運動メニューの登録・管理</summary><div class="field"><label>運動名</label><input id="newExerciseName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>形式</label><select id="newExerciseMode"><option value="reps">回数ガイド</option><option value="timer">時間計測</option></select></div><div class="field"><label>目標回数（回数ガイドの場合）</label><input id="newExerciseReps" type="number" min="1" max="1000" value="30"></div><div class="field"><label>1回の動作時間（秒）</label><input id="newExerciseSeconds" type="number" min="1" max="60" value="3"></div><button class="primary-btn" id="addExerciseDef">運動を登録する</button><div id="exerciseDefList"></div></details>
-      <details class="settings-preset-panel" id="safeVoiceSettings"><summary>🔊 音声ガイドの登録・管理</summary><div class="hint">外部の読み上げAPIは使用しません。端末内の日本語音声だけを選び、利用できなければ再生しません。文章や設定はこの端末のみに保存します。</div><div id="safeVoiceList"></div><div class="field"><label for="safeVoiceName">メニュー名</label><input id="safeVoiceName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label for="safeVoiceSteps">動作の順番（1行に1動作：文章｜秒数）</label><textarea id="safeVoiceSteps" rows="5" placeholder="足を上げます｜3&#10;下げます｜3"></textarea></div><div class="field-row"><div class="field"><label for="safeVoiceRepeats">繰り返し回数</label><input id="safeVoiceRepeats" type="number" min="1" max="200" value="10"></div><div class="field"><label for="safeVoiceSpeed">読み上げ速度</label><input id="safeVoiceSpeed" type="number" min="0.5" max="1.5" step="0.1" value="1"></div></div><div class="field"><label for="safeVoiceType">音声（端末で利用可能な日本語音声）</label><select id="safeVoiceType"><option value="">自動選択</option></select></div><button type="button" class="primary-btn" id="safeVoiceSave">音声メニューを登録</button><button type="button" class="ghost-btn" id="safeVoiceClear">入力をクリア</button><div id="safeVoiceSavedMessage" class="hint" role="status" aria-live="polite"></div></details><details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
+      <details class="settings-preset-panel" id="safeVoiceSettings"><summary>🔊 音声ガイドの登録・管理</summary><div class="hint">外部の読み上げAPIは使用しません。端末内の日本語音声だけを選び、利用できなければ再生しません。文章や設定はこの端末のみに保存します。</div><div id="safeVoiceList"></div><div class="field"><label for="safeVoiceName">メニュー名（編集対象）</label><input id="safeVoiceName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label for="safeVoiceSteps">動作の順番（1行に1動作：文章｜秒数）</label><textarea id="safeVoiceSteps" rows="5" placeholder="足を上げます｜3&#10;下げます｜3"></textarea></div><div class="field-row"><div class="field"><label for="safeVoiceRepeats">繰り返し回数</label><input id="safeVoiceRepeats" type="number" min="1" max="200" value="10"></div><div class="field"><label for="safeVoiceSpeed">読み上げ速度</label><input id="safeVoiceSpeed" type="number" min="0.5" max="1.5" step="0.1" value="1"></div></div><div class="field"><label for="safeVoiceType">音声（端末で利用可能な日本語音声）</label><select id="safeVoiceType"><option value="">自動選択</option></select></div><button type="button" class="primary-btn" id="safeVoiceSave">音声メニューを登録</button><button type="button" class="ghost-btn" id="safeVoiceClear">入力をクリア</button><div id="safeVoiceSavedMessage" class="hint" role="status" aria-live="polite"></div></details><details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
         <div id="drinkPresetList"></div>
         <div class="field"><label for="drinkPresetName">飲み物の名前</label><input id="drinkPresetName" maxlength="100" placeholder="例：オリーブオイルはちみつレモン"></div>
         <div class="field"><label for="drinkPresetMl">いつもの量（ml）</label><input id="drinkPresetMl" type="number" min="1" max="5000" step="1" value="200"></div>
@@ -4094,7 +4098,15 @@ function safeRenderMeasureDefaults(selectedName){
  function renderRegistered(){
   const all=safeReadMeasureDefaults();const rows=Object.entries(all).filter(([n,v])=>names.includes(n)&&v&&['preset','last','blank'].includes(v.mode));
   registered.innerHTML=rows.length?rows.map(([n,v])=>{const desc=v.mode==='preset'?('固定値：'+v.value+' '+(measureUnits[n]||measureDefinitions().find(x=>x.name===n)?.unit||'')):v.mode==='last'?'前回の記録値':'空欄';return `<div class="manage-row"><span><b>${safeText(n)}</b><small class="registered-description">${safeText(desc)}</small></span><button type="button" data-default-edit="${safeText(n)}">編集</button></div>`;}).join(''):'<div class="hint">初期値を登録した項目はまだありません。</div>';
-  registered.querySelectorAll('[data-default-edit]').forEach(b=>b.addEventListener('click',()=>{target.value=b.dataset.defaultEdit;renderSelection();target.focus();}));
+  registered.querySelectorAll('[data-default-edit]').forEach(b=>b.addEventListener('click',()=>{
+    const name=b.dataset.defaultEdit;
+    if(!names.includes(name))return;
+    target.value=name;
+    renderSelection();
+    preview.textContent='✏️ '+name+' の初期値を編集中です。変更後に「この項目の初期値を保存」を押してください。';
+    target.scrollIntoView({block:'center',behavior:'smooth'});
+    target.focus({preventScroll:true});
+  }));
  }
  function renderSelection(){
   const item=safeReadMeasureDefaults()[target.value]||{mode:'blank',value:''};
@@ -4146,8 +4158,24 @@ function safeRenderVoice(){
  const sel=document.getElementById('safeVoiceMenu');
  if(sel){const old=sel.value;sel.innerHTML=items.map(x=>`<option value="${safeText(x.id)}">${safeText(x.name)}</option>`).join('');if(items.some(x=>x.id===old))sel.value=old;}
  const host=document.getElementById('safeVoiceList');if(!host)return;
- host.innerHTML='<div class="registered-list-heading">登録済みの音声メニュー</div>'+items.map(x=>{const builtin=x.id.startsWith('builtin_');const detail=x.steps.map(st=>st.text+' '+st.seconds+'秒').join(' → ');return `<div class="manage-row"><span><b>${safeText(x.name)}</b><small class="registered-description">${safeText(detail)} ／ ${safeText(x.repeats)}回・速度 ${safeText(x.rate||1)}${builtin?' ／ 定番メニュー':''}</small></span>${builtin?'':`<button type="button" data-safe-voice-edit="${safeText(x.id)}">編集</button><button type="button" data-safe-voice-del="${safeText(x.id)}">削除</button>`}</div>`;}).join('');
- host.querySelectorAll('[data-safe-voice-edit]').forEach(btn=>btn.onclick=()=>{const item=items.find(x=>x.id===btn.dataset.safeVoiceEdit);if(!item)return;safeVoiceEditing=item.id;document.getElementById('safeVoiceName').value=item.name;document.getElementById('safeVoiceSteps').value=item.steps.map(x=>x.text+'｜'+x.seconds).join('\n');document.getElementById('safeVoiceRepeats').value=item.repeats;document.getElementById('safeVoiceSpeed').value=item.rate;document.getElementById('safeVoiceType').value=item.voice||'';document.getElementById('safeVoiceSave').textContent='変更を保存';document.getElementById('safeVoiceSettings').open=true;});
+ host.innerHTML='<div class="registered-list-heading">登録済みの音声メニュー</div>'+items.map(x=>{const builtin=x.id.startsWith('builtin_');const detail=x.steps.map(st=>st.text+' '+st.seconds+'秒').join(' → ');return `<div class="manage-row"><span><b>${safeText(x.name)}</b><small class="registered-description">${safeText(detail)} ／ ${safeText(x.repeats)}回・速度 ${safeText(x.rate||1)}${builtin?' ／ 定番メニュー':''}</small></span>${builtin?`<button type="button" data-safe-voice-edit="${safeText(x.id)}">コピーして編集</button>`:`<button type="button" data-safe-voice-edit="${safeText(x.id)}">編集</button><button type="button" data-safe-voice-del="${safeText(x.id)}">削除</button>`}</div>`;}).join('');
+ host.querySelectorAll('[data-safe-voice-edit]').forEach(btn=>btn.onclick=()=>{
+  const item=items.find(x=>x.id===btn.dataset.safeVoiceEdit);if(!item)return;
+  const builtin=item.id.startsWith('builtin_');
+  safeVoiceEditing=builtin?null:item.id;
+  document.getElementById('safeVoiceName').value=builtin?item.name+'（カスタム）':item.name;
+  document.getElementById('safeVoiceSteps').value=item.steps.map(x=>x.text+'｜'+x.seconds).join('\n');
+  document.getElementById('safeVoiceRepeats').value=item.repeats;
+  document.getElementById('safeVoiceSpeed').value=item.rate;
+  document.getElementById('safeVoiceType').value=item.voice||'';
+  document.getElementById('safeVoiceSave').textContent=builtin?'コピーしたメニューを登録':'変更を保存';
+  document.getElementById('safeVoiceSettings').open=true;
+  const message=document.getElementById('safeVoiceSavedMessage');
+  if(message)message.textContent=(builtin?'✏️ 定番の「'+item.name+'」をコピーして編集中です。定番メニューは変更せず新しく登録します。':'✏️ 「'+item.name+'」を編集中です。変更後に保存してください。');
+  const field=document.getElementById('safeVoiceName');
+  field.scrollIntoView({block:'center',behavior:'smooth'});
+  field.focus({preventScroll:true});
+ });
  host.querySelectorAll('[data-safe-voice-del]').forEach(btn=>btn.onclick=()=>{if(!confirm('この音声メニューの設定を削除しますか？'))return;const rows=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x.id!==btn.dataset.safeVoiceDel);if(writeExtra(SAFE_VOICE_DEFS_KEY,rows))safeRenderVoice();});
 }
 function safePopulateVoices(){if(!safeVoiceSupport)return;const field=document.getElementById('safeVoiceType'),current=field.value;const voices=speechSynthesis.getVoices().filter(v=>v.lang?.startsWith('ja')&&v.localService===true);field.innerHTML='<option value="">日本語音声を自動選択</option>'+voices.map(v=>`<option value="${safeText(v.name)}">${safeText(v.name)}</option>`).join('');field.value=voices.some(v=>v.name===current)?current:'';}
