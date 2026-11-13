@@ -509,6 +509,28 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
 /* v5.10.1: registered setting editing is a visible, reachable action on mobile */
 #safeDefaultRegistered .manage-row button,#safeVoiceList .manage-row button{cursor:pointer;touch-action:manipulation;position:relative;z-index:1}
 #safeDefaultTarget,#safeVoiceName{scroll-margin-top:95px}
+
+/* v5.15: iOS Safari / standalone Web App: avoid native date intrinsic overflow */
+html,body,.app-container,.container,.card,.field,.field-row,.modal,.modal-scroll-content,.capture-body,.settings-preset-panel{min-width:0;max-width:100%;box-sizing:border-box;}
+.field-row{min-width:0;max-width:100%;}
+.field-row>.field{min-width:0;max-width:100%;}
+input[type="date"],input[type="datetime-local"],input[type="time"],input[type="text"],input[type="number"],select,textarea{box-sizing:border-box;max-width:100%;min-width:0;}
+input[type="date"],input[type="datetime-local"]{width:100%!important;min-width:0!important;max-width:100%!important;-webkit-appearance:none;appearance:none;display:block!important;}
+input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left;}
+input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0;}
+@media(max-width:760px){.field-row{flex-direction:column!important;gap:10px!important}.field-row>.field{width:100%!important;max-width:100%!important;flex:0 1 auto!important;}.modal-backdrop .modal,.modal-scroll-content,.capture-body{max-width:100vw!important;min-width:0!important;}.field-row select,.field-row input{width:100%!important;min-width:0!important;}}
+.history-tap{cursor:pointer;min-width:0;flex:1;outline-offset:4px;}
+.history-tap:focus-visible{outline:2px solid var(--blue);}
+.history-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.history-actions button{border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 11px;min-height:42px;font-weight:600;cursor:pointer;}
+.history-actions .history-del{color:#fca5a5;border-color:#a54747;}
+.history-detail-panel{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px;padding:10px 0;}
+.manage-row{flex-wrap:wrap;}.manage-row .setting-buttons{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
+.manage-row.is-hidden>span{opacity:.5;}
+
+/* iOS date input intrinsic control size */
+.field input[type=date],.field input[type=datetime-local],.field-row input[type=date],#safeHistoryFrom{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow:hidden!important;}
+#editFields,.modal-scroll-content,#captureBody,.settings-preset-panel,.unified-history-section{min-width:0;max-width:100%;overflow-wrap:anywhere;}
 </style>
 </head>
 <body>
@@ -780,7 +802,7 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
       <button class="primary-btn" id="exportJsonBtn">🔒 完全バックアップ（JSON）を保存</button><div class="hint" id="safeBackupStatus" role="status" style="margin:10px 0">バックアップには健康記録が含まれます。保存後、ファイルアプリで存在を確認してください。</div>
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none">
       <button class="ghost-btn" id="importJsonBtn">完全バックアップから復元</button>
-    </div><div class="card"><h2>アプリの更新とホーム画面</h2><div class="hint">既にホーム画面に追加したアプリは、通常は削除・再追加せず同じURLで更新できます。記録が消えるおそれがあるため、古いアプリは削除しないでください。</div><button type="button" class="ghost-btn" id="safeReloadApp">更新のため画面を再読み込み</button><button type="button" class="ghost-btn" id="safeInstallHelp">ホーム画面に追加する方法</button></div><div class="card"><h2>データを書き出す</h2>
+    </div><div class="card"><h2>アプリの更新とホーム画面</h2><div class="hint">既にホーム画面に追加したアプリは、通常は削除・再追加せず同じURLで更新できます。記録が消えるおそれがあるため、古いアプリは削除しないでください。</div><button type="button" class="ghost-btn" id="safeReloadApp">更新のため画面を再読み込み</button><button type="button" class="ghost-btn" id="safeInstallHelp">ホーム画面に追加する方法</button></div><div class="legacy-csv-tools" hidden aria-hidden="true"><div class="card"><h2>データを書き出す</h2>
       <div class="hint">CSVは記録の一部を書き出すための形式で、写真・測定や運動の一部・設定などは含まれません。機種変更や完全バックアップには必ず上の「JSON」を使用してください。CSVにも健康情報が含まれるので共有にはご注意ください。</div>
       <button class="primary-btn" id="exportCsvBtn">⬇ データを書き出す（CSV）</button>
     </div>
@@ -791,8 +813,8 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
       <button class="ghost-btn" id="importCsvBtn">⬆ CSVを取り込む</button>
       <div class="note" style="margin-top:10px">取り込む前に内容を確認する画面が表示されます。取り込みもこの端末内だけで行われ、外部サーバーには送信されません。</div>
     </div>
-    <button type="button" class="ghost-btn" id="undoLastDeletion" hidden style="margin-bottom:12px">↩ 直前に削除した記録を元に戻す</button>
-    <div class="card">
+    </div><button type="button" class="ghost-btn" id="undoLastDeletion" hidden style="margin-bottom:12px">↩ 直前に削除した記録を元に戻す</button>
+    <div class="card" id="integrityRepairPanel"><h2>記録IDの整合性チェック・修復</h2><div class="hint">過去の記録IDに不整合があるときのみ使用します。重複したIDを修復する前に完全JSONを保存してください。</div><button type="button" class="ghost-btn" id="checkCoreIds">IDの状態を確認</button><button type="button" class="ghost-btn" id="repairCoreIds">バックアップ後にIDを修復</button></div><div class="card">
       <h2>データの削除</h2>
       <div class="hint">すべての記録・設定と旧形式の端末内データを削除します。完全JSONを端末外にも保管し、ファイルアプリで確認してください。</div>
       <button class="primary-btn danger-btn" id="deleteAllBtn">すべてのデータを削除する</button>
@@ -807,6 +829,8 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
     <button type="button" id="unifiedHistoryMore" class="ghost-btn" style="display:none;margin-top:12px">さらに10件表示</button>
   </div>
 </section>
+<div id="historyDetailDialog" hidden role="dialog" aria-modal="true" aria-label="記録の詳細" style="position:fixed;inset:0;z-index:100050;background:rgba(2,6,23,.87);padding:calc(20px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));overflow-y:auto"><div style="max-width:560px;margin:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px"><h2>記録の詳細</h2><div id="historyDetailText" class="history-detail-panel"></div><div class="history-actions"><button type="button" id="historyDetailEdit">編集</button><button type="button" id="historyDetailDelete" class="history-del">削除</button><button type="button" id="historyDetailClose">閉じる</button></div></div></div>
+<script>document.getElementById('historyDetailClose').addEventListener('click',()=>document.getElementById('historyDetailDialog').hidden=true);</script>
 <section class="footer-privacy"><div class="card" id="topPrivacyNotice" style="margin-bottom:14px">
   <h2>プライバシー</h2>
   <div class="hint">このアプリのデータはこの端末のブラウザ内にのみ保存されます。</div>
@@ -832,7 +856,7 @@ input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hm
     <h2>🔒 ご利用前にお読みください</h2>
     <p>このアプリは症状データを、お使いの端末のブラウザ内にのみ保存します。アカウント登録・クラウド保存・広告・アクセス解析はこのHTMLから行いません。ただしGitHub PagesへのアクセスやOSの音声機能には各サービスの通信・ログが伴う場合があります。</p>
     <p>ブラウザのデータ削除、サイトデータの消去、端末の変更などにより記録が失われる場合があります。</p>
-    <p>必要な場合は「設定」タブの「データを書き出す」をご利用ください。書き出したファイルには症状などの個人情報が含まれるため、取り扱いにはご注意ください。</p>
+    <p>完全バックアップには「設定」タブの「完全バックアップ（JSON）」をご利用ください。書き出したファイルには症状などの個人情報が含まれるため、取り扱いにはご注意ください。</p>
     <button class="primary-btn" id="privacyAckBtn">確認しました</button>
   </div>
 </div>
@@ -1158,7 +1182,7 @@ function colorOf(region){ const r=REGIONS.find(x=>x.key===region); return r?r.co
 function allRegionKeysUnique(){
   const seen=new Set(); const out=[];
   REGIONS.forEach(r=>{ if(!seen.has(r.key)){ seen.add(r.key); out.push(r.key);} });
-  if(typeof extraRegions==='function')extraRegions().coarse.forEach(name=>{if(!seen.has(name)){seen.add(name);out.push(name);}});
+  if(typeof extraRegions==='function')extraRegions().coarse.filter(name=>!extraRegions().hiddenCoarse.includes(name)).forEach(name=>{if(!seen.has(name)){seen.add(name);out.push(name);}});
   return out;
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -1261,14 +1285,25 @@ function htCheckExistingCoreIds(){
    used.add(id);maxId=Math.max(maxId,id);
   }
  }
- if(!Number.isSafeInteger(Number(appData.nextId))||Number(appData.nextId)<=maxId)issues.push('nextIdが既存IDと矛盾しています');
+ if(!Number.isSafeInteger(Number(appData.nextId))||Number(appData.nextId)<=maxId){issues.push('nextIdが既存IDと矛盾しています');}
  return issues;
 }
 function htWarnCoreIntegrity(){
- const issues=htCheckExistingCoreIds();if(issues.length){
-  dataLoadFailed=true;
-  showCriticalSaveWarning('保存データのID不整合を検出したため保存を停止しました。JSONバックアップを確保し、修復前に確認してください。'+issues.slice(0,3).join('／'));
+ const issues=htCheckExistingCoreIds();if(!issues.length)return;
+ const onlyNextId=issues.every(x=>x.startsWith('nextId'));
+ if(onlyNextId){
+  const old=Number(appData.nextId),maxId=Math.max(0,...HT_CORE_RECORD_KEYS.flatMap(k=>(appData[k]||[]).map(r=>Number(r.id)||0)));
+  const candidate=maxId+1;
+  if(!Number.isSafeInteger(candidate)){dataLoadFailed=true;showCriticalSaveWarning('ID採番が数値上限に達しています。保存を停止しました。');return;}
+  // Preserve original bytes as a local recovery snapshot before changing nextId.
+  try{const raw=localStorage.getItem(STORAGE_KEY_V4);if(raw!==null){const key='healthTimelineNextIdRecovery_v1';if(localStorage.getItem(key)===null)localStorage.setItem(key,raw);}}catch(e){dataLoadFailed=true;showCriticalSaveWarning('ID修復前の退避ができないため保存を停止しました。');return;}
+  appData.nextId=candidate;
+  if(!saveData()){appData.nextId=old;dataLoadFailed=true;showCriticalSaveWarning('採番の安全修復に失敗したため保存を停止しました。');}
+  else alert('過去記録のIDは変更せず、次の採番番号だけを安全な値に補正しました。完全JSONバックアップを保管してください。');
+  return;
  }
+ dataLoadFailed=true;
+ showCriticalSaveWarning('重複IDまたは不正なIDを検出しました。記録を保護するため保存を停止しています。完全JSONバックアップを保管してください。'+issues.slice(0,3).join('／'));
 }
 function loadData(){
   try{
@@ -1315,6 +1350,28 @@ function showCriticalSaveWarning(msg){
   if(!window.__htWarningAt||Date.now()-window.__htWarningAt>6000){window.__htWarningAt=Date.now();alert(msg);}
 }
 
+function htRepairDuplicateIds(){
+ const issues=htCheckExistingCoreIds();if(!issues.length){alert('記録IDに問題は見つかりませんでした。');return;}
+ if(!confirm('IDの不整合を修復しますか？既存の日時・症状・コメントは変更せず、重複/不正なIDだけ付け直します。先に完全JSONの保存を確認してください。'))return;
+ try{safeDownloadJson(safeExportObject(),'health-timeline-before-id-repair');}catch(e){alert('退避JSONの生成に失敗したため中止しました');return;}
+ if(prompt('退避JSONがファイルに保存されたことを確認した場合だけ「修復」と入力してください。')!=='修復')return;
+ const raw=localStorage.getItem(STORAGE_KEY_V4),obj=raw?JSON.parse(raw):appData;
+ const used=new Set();let mx=0;for(const key of HT_CORE_RECORD_KEYS){for(const record of obj[key]||[]){const n=Number(record?.id);if(Number.isSafeInteger(n)&&n>0)mx=Math.max(mx,n);}}
+ if(mx>Number.MAX_SAFE_INTEGER-10000){alert('安全なID採番の範囲を超えているため修復を中止しました。');return;}
+ for(const key of HT_CORE_RECORD_KEYS){for(const record of obj[key]||[]){const n=Number(record?.id);if(!Number.isSafeInteger(n)||n<1||used.has(n)){record.id=++mx;}used.add(record.id);}}
+ obj.nextId=Math.max(mx+1,Number(obj.nextId)||1);
+ const oldData=appData,oldFailed=dataLoadFailed,oldSnapshot=window.__htCoreSnapshot;appData=obj;dataLoadFailed=false;window.__htCoreSnapshot=raw;
+ if(!saveData()){appData=oldData;dataLoadFailed=oldFailed;window.__htCoreSnapshot=oldSnapshot;alert('修復結果を保存できませんでした。');return;}
+ alert('IDの修復が完了しました。編集や削除を続ける前に最新の完全JSONバックアップも保存してください。');refreshAfterSafeDataChange();
+}
+document.getElementById('checkCoreIds').addEventListener('click',()=>{const issues=htCheckExistingCoreIds();alert(issues.length?'確認された問題：\n'+issues.slice(0,10).join('\n'):'コア記録のIDに問題は見つかりませんでした。');});
+document.getElementById('repairCoreIds').addEventListener('click',htRepairDuplicateIds);
+function htRollbackLastAppend(key,previousNextId){
+ if(Array.isArray(appData[key]))appData[key].pop();
+ if(Number.isSafeInteger(previousNextId))appData.nextId=previousNextId;
+ alert('記録は保存できませんでした。入力内容を維持したまま、空き容量・バックアップを確認してください。');
+ return false;
+}
 function touchActive(){
   appData.lastActiveAt = Date.now();
   saveData();
@@ -1754,7 +1811,7 @@ document.getElementById('mSave').addEventListener('click', () => {
     id: appData.nextId++, region, level, startTs, endTs: startTs + durationSec*1000, durationSec,
     recordedAt: Date.now(), entryType: 'manual', sessionId: null, segmentIndex: 0, note
   });
-  saveData();
+  if(!saveData())return htRollbackLastAppend('painRecords',appData.nextId-1);
   painBackdrop.classList.remove('open');
   renderRecordsList(); renderChart(); renderTimeline(); renderTrend(); touchActive();
 });
@@ -1790,7 +1847,7 @@ document.getElementById('npSave').addEventListener('click', () => {
   appData.noPainRecords.push({
     id: appData.nextId++, region, startTs, endTs, recordedAt: Date.now(), entryType: 'manual', note
   });
-  saveData();
+  if(!saveData())return htRollbackLastAppend('noPainRecords',appData.nextId-1);
   noPainBackdrop.classList.remove('open');
   renderTimeline(); touchActive();
   alert('痛みなしの記録を保存しました');
@@ -1857,10 +1914,11 @@ function initSymptomCatalog(){
 function saveSymptomCatalog(){try{const raw=localStorage.getItem(SYMPTOM_CONFIG_KEY);if(raw!==null&&!Array.isArray(JSON.parse(raw)))throw Error('既存の症状設定が破損しています');localStorage.setItem(SYMPTOM_CONFIG_KEY,JSON.stringify(symptomCatalog));return true;}catch(e){alert('症状の設定を保存できませんでした。既存設定は上書きしていません。');return false;}}
 function refreshSymptomCatalog(){GENERAL_SYMPTOMS.splice(0,GENERAL_SYMPTOMS.length,...symptomCatalog.filter(x=>!x.hidden));saveSymptomCatalog();renderSymptomChips();renderSymptomQuickChoices();renderSymptomManager();}
 function renderSymptomManager(){const el=document.getElementById('symptomManager');if(!el)return;
- el.innerHTML='<div class="field"><label>新しい症状名</label><input id="newSymptomName" maxlength="40" placeholder="例：耳鳴り、咳、関節痛"></div><button type="button" class="primary-btn" id="addSymptom">症状を追加</button>'+symptomCatalog.map((x,i)=>`<div class="symptom-manager-row"><span>${safeText(x.label)}</span><button data-move-sym="${i}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-move-sym="${i}" data-dir="1" ${i===symptomCatalog.length-1?'disabled':''}>↓</button><button data-toggle-sym="${i}">${x.hidden?'表示':'非表示'}</button><button data-rename-sym="${i}">名称変更</button></div>`).join('');
+ el.innerHTML='<div class="field"><label>新しい症状名</label><input id="newSymptomName" maxlength="40" placeholder="例：耳鳴り、咳、関節痛"></div><button type="button" class="primary-btn" id="addSymptom">症状を追加</button>'+symptomCatalog.map((x,i)=>`<div class="symptom-manager-row"><span>${safeText(x.label)}</span><button data-move-sym="${i}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-move-sym="${i}" data-dir="1" ${i===symptomCatalog.length-1?'disabled':''}>↓</button><button data-toggle-sym="${i}">${x.hidden?'表示':'非表示'}</button><button data-rename-sym="${i}">編集</button>${x.key.startsWith('custom_')?`<button data-remove-sym="${i}">削除</button>`:''}</div>`).join('');
  el.querySelector('#addSymptom').onclick=()=>{const label=el.querySelector('#newSymptomName').value.trim();if(!label)return;const key='custom_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,5);symptomCatalog.push({key,label,kind:'degree',hidden:false});refreshSymptomCatalog();};
  el.querySelectorAll('[data-toggle-sym]').forEach(b=>b.onclick=()=>{symptomCatalog[Number(b.dataset.toggleSym)].hidden=!symptomCatalog[Number(b.dataset.toggleSym)].hidden;refreshSymptomCatalog();});
  el.querySelectorAll('[data-rename-sym]').forEach(b=>b.onclick=()=>{const x=symptomCatalog[Number(b.dataset.renameSym)];const label=prompt('新しい症状名',x.label);if(label?.trim()){x.label=label.trim();refreshSymptomCatalog();}});
+ el.querySelectorAll('[data-remove-sym]').forEach(b=>b.onclick=()=>{const item=symptomCatalog[Number(b.dataset.removeSym)];if(!item||!item.key.startsWith('custom_'))return;if(!confirm('この症状の登録を削除しますか？過去の記録は残ります。'))return;symptomCatalog=symptomCatalog.filter(x=>x.key!==item.key);refreshSymptomCatalog();});
  el.querySelectorAll('[data-move-sym]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.moveSym),j=i+Number(b.dataset.dir);[symptomCatalog[i],symptomCatalog[j]]=[symptomCatalog[j],symptomCatalog[i]];refreshSymptomCatalog();});
 }
 initSymptomCatalog();
@@ -1940,11 +1998,12 @@ function saveSelectedSymptoms(startTs, manualEndTs=null){
   const selectedKeys=Object.keys(symptomSelections); if(!selectedKeys.length){alert('症状を1つ以上選択してください');return false;}
   const now=Date.now(),note=document.getElementById('sNote').value.trim();
   for(const key of selectedKeys){const def=GENERAL_SYMPTOMS.find(s=>s.key===key),sel=symptomSelections[key];if(!def||!sel){alert('症状を選び直してください');return false;}if(def.kind==='temp'){if(!Number.isFinite(Number(sel.value))||Number(sel.value)<30||Number(sel.value)>43){alert('体温を確認してください');return false;}}else if(!sel.touched){alert(def.label+'のバーを動かして強さを記録してください');return false;}}
+  const beforeCount=appData.symptomEvents.length,beforeNextId=appData.nextId,beforeSessions=Object.assign({},activeSymptomSessions);
   for(const key of selectedKeys){ const def=GENERAL_SYMPTOMS.find(s=>s.key===key),sel=symptomSelections[key];
     if(def.kind==='temp'){ const value=parseFloat(sel.value); if(!Number.isFinite(value)||value<30||value>43){alert('発熱・熱っぽさの体温を30〜43℃の範囲で入力してください');return false;} appData.symptomEvents.push({id:appData.nextId++,type:key,label:def.label,kind:'temp',value,unit:'℃',startTs,endTs:manualEndTs||startTs,recordedAt:now,entryType:Math.abs(now-startTs)<120000?'realtime':'manual',note});
     } else { if(!sel.touched){alert(def.label+'のバーを動かして強さを記録してください');return false;} const level=Math.max(0,Math.min(10,parseInt(sel.value,10)||0)),sessionId=genSymptomSessionId(); appData.symptomEvents.push({id:appData.nextId++,type:key,label:def.label,kind:'intensity',value:level,unit:'/10',startTs,endTs:manualEndTs,recordedAt:now,entryType:Math.abs(now-startTs)<120000?'realtime':'manual',sessionId,segmentIndex:0,note}); activeSymptomSessions[sessionId]={key,label:def.label,sessionId,level,segStart:startTs,sessionStart:startTs,segmentIndex:0,note}; }
   }
-  saveData(); symptomBackdrop.classList.remove('open'); renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();touchActive(); return true;
+  if(!saveData()){appData.symptomEvents.length=beforeCount;appData.nextId=beforeNextId;activeSymptomSessions=beforeSessions;alert('症状を保存できませんでした。内容を維持して再確認してください。');return false;} symptomBackdrop.classList.remove('open'); renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();touchActive(); return true;
 }
 function commitSymptomSegment(session,endTs){ const r=appData.symptomEvents.find(x=>x.sessionId===session.sessionId&&x.segmentIndex===session.segmentIndex); if(r){r.endTs=endTs;r.durationSec=Math.max(0,Math.round((endTs-r.startTs)/1000));r.value=session.level;} saveData(); }
 function renderActiveSymptomSessions(){ const holder=document.getElementById('activeSymptomPanel');if(!holder)return;const sessions=Object.values(activeSymptomSessions);if(!sessions.length){holder.innerHTML='';return;} holder.innerHTML=sessions.map(s=>`<div class="symptom-session-card is-recording"><div class="session-head"><div class="session-name">${safeText(s.label)}</div><span class="status-badge rec">● 記録中</span></div><div class="session-time">開始：${fmtJp(s.sessionStart)}</div><div class="slider-container"><div class="symptom-range-value" id="activeSymVal-${s.sessionId}">強さ：${s.level} / 10</div><input type="range" class="pain-slider symptom-range" data-active-symptom="${s.sessionId}" min="0" max="10" step="1" value="${s.level}"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div><button class="rec-btn session-end" data-end-symptom="${s.sessionId}">記録終了</button><div class="tip-txt">強さを変えると、その時刻で前の区間を確定します。</div></div>`).join('');
@@ -2131,7 +2190,7 @@ document.getElementById('menSave').addEventListener('click', () => {
     texture:menState.texture, textureTags:[...menState.textureTags], color:menState.color, state:menState.state,
     startTs,endTs:startTs,recordedAt:Date.now(),entryType:'manual', note:document.getElementById('menNote').value.trim()
   });
-  saveData(); menstrualBackdrop.classList.remove('open'); renderMenstrualHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); touchActive();
+  if(!saveData())return htRollbackLastAppend('menstrualEvents',appData.nextId-1); menstrualBackdrop.classList.remove('open'); renderMenstrualHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); touchActive();
 });
 
 function renderMenstrualHistory(){
@@ -2202,7 +2261,7 @@ document.getElementById('disSave').addEventListener('click', () => {
     id: appData.nextId++, amount: disState.amount, color: disState.colorTags.join('・') || null, colorTags:[...disState.colorTags], clarityTags:[...disState.clarityTags], state: disState.stateTags.join('・') || null, stateTags:[...disState.stateTags],
     startTs, endTs: null, recordedAt: Date.now(), entryType: 'manual', note: document.getElementById('disNote').value.trim()
   });
-  saveData();
+  if(!saveData())return htRollbackLastAppend('dischargeEvents',appData.nextId-1);
   dischargeBackdrop.classList.remove('open');
   renderDischargeHistory(); renderMenstrualChart(); renderTimeline(); renderTrend(); touchActive();
 });
@@ -2394,13 +2453,13 @@ document.getElementById('quickUrineEnd').addEventListener('click',()=>{
   if(!urinationStartTs)return;
   const endTs=Date.now();
   appData.lifestyleEvents.push({id:appData.nextId++,type:'排尿',startTs:urinationStartTs,endTs,durationSec:Math.max(0,Math.round((endTs-urinationStartTs)/1000)),color:'#e9c33a',recordedAt:Date.now(),entryType:'manual',note:''});
-  urinationStartTs=null;appData.activeUrination=null;saveData();syncQuickUrine();renderLifestyleHistory();renderTimeline();renderTrend();
+  const previousUrineStart=urinationStartTs;urinationStartTs=null;appData.activeUrination=null;if(!saveData()){appData.lifestyleEvents.pop();appData.nextId--;urinationStartTs=previousUrineStart;appData.activeUrination={startTs:previousUrineStart};return;}syncQuickUrine();renderLifestyleHistory();renderTimeline();renderTrend();
 });
 function saveQuickWater(ml){
   ml=Math.max(0,Math.min(5000,Math.round(Number(ml)||0)));
   const ts=Date.now();
   appData.lifestyleEvents.push({id:appData.nextId++,type:'水分補給',startTs:ts,endTs:ts,amountMl:ml,drink:'水',recordedAt:ts,entryType:'manual',note:''});
-  saveData();renderLifestyleHistory();renderTimeline();renderTrend();
+  if(!saveData())return htRollbackLastAppend('lifestyleEvents',appData.nextId-1);renderLifestyleHistory();renderTimeline();renderTrend();
   const label=document.getElementById('quickWaterLabel'); if(label)label.textContent=ml+' ml';
 }
 const quickWaterSlider=document.getElementById('quickWaterSlider'),quickWaterNum=document.getElementById('quickWaterNum');
@@ -2430,7 +2489,7 @@ document.getElementById('urinationCancelBtn').addEventListener('click',()=>{ lif
 document.getElementById('urinationEndBtn').addEventListener('click',()=>{
   if(!urinationStartTs)return; const endTs=Date.now();
   appData.lifestyleEvents.push({id:appData.nextId++,type:'排尿',startTs:urinationStartTs,endTs,durationSec:Math.max(0,Math.round((endTs-urinationStartTs)/1000)),color:document.getElementById('lifeColor').value,recordedAt:Date.now(),entryType:'manual',note:document.getElementById('lifeNote').value.trim()});
-  urinationStartTs=null; appData.activeUrination=null; saveData(); lifestyleBackdrop.classList.remove('open'); renderLifestyleHistory(); renderTimeline(); renderTrend(); syncQuickUrine();
+  const previousUrineStart=urinationStartTs;urinationStartTs=null;appData.activeUrination=null;if(!saveData()){appData.lifestyleEvents.pop();appData.nextId--;urinationStartTs=previousUrineStart;appData.activeUrination={startTs:previousUrineStart};return;} lifestyleBackdrop.classList.remove('open'); renderLifestyleHistory(); renderTimeline(); renderTrend(); syncQuickUrine();
 });
 document.getElementById('lifeSave').addEventListener('click',()=>{
   const type=lifestyleSelections.type;
@@ -2446,7 +2505,7 @@ document.getElementById('lifeSave').addEventListener('click',()=>{
   if(type==='排尿')rec.color=document.getElementById('lifeColor').value;
   if(type==='排便'){rec.colorTags=[...document.querySelectorAll('#lifeBowelColorChips .c.active')].map(c=>c.dataset.v);rec.color=rec.colorTags[0]||null;rec.bloodObserved=!!document.getElementById('lifeBowelBlood')?.checked;}
   if(type==='排便'){rec.bowelSelections=bowelSelections.map(x=>({...x}));rec.bowelStates=[...lifestyleSelections.bowelStates];rec.bowelState=rec.bowelSelections.length?rec.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):(rec.bowelStates.join('・')||null);}
-  appData.lifestyleEvents.push(rec); saveData(); lifestyleBackdrop.classList.remove('open'); renderLifestyleHistory(); renderTimeline(); renderTrend();
+  appData.lifestyleEvents.push(rec); if(!saveData()){appData.lifestyleEvents.pop();appData.nextId=Math.max(1,appData.nextId-1);alert('記録を保存できませんでした。入力画面は閉じません。容量を確認し、完全JSONバックアップを保存してください。');return;} lifestyleBackdrop.classList.remove('open'); renderLifestyleHistory(); renderTimeline(); renderTrend();
 });
 function renderLifestyleHistory(){
   syncQuickUrine();
@@ -2742,7 +2801,7 @@ function openEditPain(id){
   if(!Number.isFinite(st) || (en!==null && (!Number.isFinite(en)||en<st))){alert('開始・終了日時を確認してください');return;}
   r.region=document.getElementById('ef_region').value;r.level=Math.min(10,Math.max(0,Number(document.getElementById('ef_level').value)||0));
   r.startTs=st;r.endTs=en;if(en!==null)r.durationSec=Math.max(0,Math.round((en-st)/1000));else delete r.durationSec;
-  r.note=document.getElementById('ef_note').value;saveData();closeEdit();renderRecordsList();renderChart();renderTimeline();renderTrend();
+  r.note=document.getElementById('ef_note').value;if(!saveData())return;closeEdit();renderRecordsList();renderChart();renderTimeline();renderTrend();
  };
  document.getElementById('editDelete').onclick=()=>{if(deleteCoreRecordSafely('painRecords',id,'痛み')){closeEdit();refreshAfterSafeDataChange();}};
 }
@@ -2758,9 +2817,9 @@ function openEditSymptom(id){
   if(!Number.isFinite(val)||(isTemp?(val<30||val>43):(val<0||val>10))){alert('値を確認してください');return;}
   r.value=val;r.startTs=st;r.endTs=en;r.note=document.getElementById('ef_note').value;
   if(en!=null)r.durationSec=Math.max(0,Math.round((en-st)/1000));else delete r.durationSec;
-  saveData();closeEdit();renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();renderTrend();
+  if(!saveData())return;closeEdit();renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();renderTrend();
  };
- document.getElementById('editDelete').onclick=()=>{if(deleteCoreRecordSafely('symptomEvents',id,'症状')){closeEdit();refreshAfterSafeDataChange();renderActiveSymptomSessions();}};
+ document.getElementById('editDelete').onclick=()=>{const sid=r.sessionId;if(deleteCoreRecordSafely('symptomEvents',id,'症状')){if(sid&&!appData.symptomEvents.some(x=>x.sessionId===sid)){if(typeof activeSymptomSessions!=='undefined'&&activeSymptomSessions){delete activeSymptomSessions[sid];try{if(typeof saveActiveSymptomSessions==='function')saveActiveSymptomSessions();}catch(e){console.warn('症状セッションの整理',e);}}}closeEdit();refreshAfterSafeDataChange();renderActiveSymptomSessions();}};
 }
 
 function openEditGeneric(arrKey,id,title){
@@ -2779,16 +2838,16 @@ function openEditGeneric(arrKey,id,title){
     document.getElementById('editSave').onclick=()=>{
       const st=editedTimestamp('ef_sdate','ef_stime',r.startTs); if(!Number.isFinite(st)){alert('開始日時を確認してください');return;}
       const t=document.getElementById('ef_lifeType').value; let en=st;
-      if(t==='排尿'){en=editedOptionalEnd('ef_edate','ef_etime',r.endTs);if(en===null||!Number.isFinite(en)||en<st){alert('終了日時を確認してください');return;}}
+      if(['排尿','入浴','睡眠'].includes(t)){en=editedOptionalEnd('ef_edate','ef_etime',r.endTs);if(t==='排尿'&&en===null){alert('終了日時を確認してください');return;}if(en!==null&&(!Number.isFinite(en)||en<st)){alert('終了日時が開始より前です。確認してください');return;}}
       const previousType=r.type;const previousDuration=Number(r.durationSec)||0;
       const unchangedUrineInterval=previousType==='排尿'&&t==='排尿'&&document.getElementById('ef_sdate').value===fmtDateStr(r.startTs)&&document.getElementById('ef_stime').value===timeWithSeconds(r.startTs)&&document.getElementById('ef_edate').value===fmtDateStr(r.endTs||r.startTs)&&document.getElementById('ef_etime').value===(r.endTs!=null?timeWithSeconds(r.endTs):'');
-      r.type=t;r.startTs=st;if(t==='排尿'){r.endTs=en;r.durationSec=unchangedUrineInterval?previousDuration:Math.max(1,Math.round((en-st)/1000));}else if(previousType==='排尿'){delete r.endTs;delete r.durationSec;}if(t==='お腹の張り')r.level=parseInt(document.getElementById('ef_lifeLevel').value,10)||0;else if(previousType==='お腹の張り')delete r.level;if(t==='食事')r.mealAmount=document.getElementById('ef_lifeMeal').value;else if(previousType==='食事')delete r.mealAmount;
+      r.type=t;r.startTs=st;if(['排尿','入浴','睡眠'].includes(t)){if(en!==null){r.endTs=en;r.durationSec=unchangedUrineInterval?previousDuration:Math.max(0,Math.round((en-st)/1000));}else{delete r.endTs;delete r.durationSec;}}else if(['排尿','入浴','睡眠'].includes(previousType)){delete r.endTs;delete r.durationSec;}if(t==='お腹の張り')r.level=parseInt(document.getElementById('ef_lifeLevel').value,10)||0;else if(previousType==='お腹の張り')delete r.level;if(t==='食事')r.mealAmount=document.getElementById('ef_lifeMeal').value;else if(previousType==='食事')delete r.mealAmount;
       if(t==='排便'){r.bowelSelections=editBowelSelections.map(x=>({...x}));r.bowelStates=[];r.bowelState=r.bowelSelections.length?r.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):(bs.join('・')||null);}else if(previousType==='排便'){delete r.bowelSelections;delete r.bowelStates;delete r.bowelState;}
       if(t==='食事')r.mealAmount=document.getElementById('ef_lifeMeal').value;
       if(t==='服薬'){r.medicationName=document.getElementById('ef_lifeMedicationName').value.trim();r.medicationDose=document.getElementById('ef_lifeMedicationDose').value.trim();if(!r.medicationName){alert('薬の名前を入力してください');return;}}
       if(t==='水分補給'){r.amountMl=Math.max(0,Number(document.getElementById('ef_lifeWater').value)||0);r.drink=document.getElementById('ef_lifeDrink').value;}
       if(t==='排便'){r.colorTags=[...document.querySelectorAll('#efLifeBowelColors .c.active')].map(c=>c.dataset.v);r.color=r.colorTags[0]||null;r.bloodObserved=!!document.getElementById('efLifeBowelBlood').checked;}
-      r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderLifestyleHistory();renderTimeline();
+      r.note=document.getElementById('ef_note').value.trim();if(!saveData()){alert('保存に失敗したため編集画面を閉じません。内容を確認して再度保存してください。');return;}closeEdit();renderLifestyleHistory();renderTimeline();
     };
     document.getElementById('editDelete').onclick=()=>{if(deleteCoreRecordSafely('lifestyleEvents',id,'生活')){closeEdit();refreshAfterSafeDataChange();}};return;
   }
@@ -2824,7 +2883,7 @@ function openEditGeneric(arrKey,id,title){
       const type=document.getElementById('ef_mtype').value;if(type==='出血'&&!editMen.none&&(editMen.x==null||!editMen.color)){alert('「出血」の場合は、量×色のセル、または「出血なし」を選択してください');return;}
       r.type=type;r.startTs=st;
       if(type==='出血'){r.bleedingNone=!!editMen.none;r.amountX=editMen.none?null:editMen.x;r.amount=editMen.none?null:nearestLabel(BLEED_AMOUNT_LABELS,editMen.x,'x');r.amountScore=editMen.none?null:Math.max(.01,Math.min(3,editMen.x*3));r.color=editMen.none?null:editMen.color;r.textureTags=[...editMen.textures];r.texture=r.textureTags.join('・')||null;r.state=r.texture;r.textureY=r.textureTags.length?({'塊あり':.08,'粘り気あり':.28,'通常':.5,'サラサラ':.85}[r.textureTags[0]]??null):null;}else{r.amount=null;r.amountScore=null;r.amountX=null;r.textureY=null;r.texture=null;r.textureTags=[];r.color=null;r.state=null;r.bleedingNone=false;}
-      r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderMenstrualHistory();renderMenstrualChart();renderTimeline();
+      r.note=document.getElementById('ef_note').value.trim();if(!saveData())return;closeEdit();renderMenstrualHistory();renderMenstrualChart();renderTimeline();
     };
     document.getElementById('editDelete').onclick=()=>{if(deleteCoreRecordSafely(arrKey,id,'周期')){closeEdit();refreshAfterSafeDataChange();}};
     return;
@@ -2832,7 +2891,7 @@ function openEditGeneric(arrKey,id,title){
   document.getElementById('editTitle').textContent=title+'を編集';
   document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${safeText(r.note||'')}</textarea></div>`;
   editBackdrop.classList.add('open');
-  document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
+  document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();if(!saveData())return;closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
   document.getElementById('editDelete').onclick=()=>{if(deleteCoreRecordSafely(arrKey,id,'周期')){closeEdit();refreshAfterSafeDataChange();}};
 }
 
@@ -3583,7 +3642,7 @@ document.getElementById('deleteAllBtn').addEventListener('click',()=>{
   window.__htRestoring=true;
   try{
     for(const key of [...BACKUP_KEYS,...legacyKeys])localStorage.removeItem(key);
-    // Only explicit full deletion disables legacy migration; legacy keys remain as a recovery archive.
+    // Explicit full deletion also clears legacy migration keys; the pre-delete JSON includes those keys.
     localStorage.setItem('healthTimelineExplicitErase_v1','1');
     appData=defaultData();activeSessions={};activeSymptomSessions={};window.__htCoreSnapshot=null;
     alert('記録・設定の削除が完了しました。画面を更新します。');location.reload();
@@ -3820,29 +3879,32 @@ function readPresets(key){try{const raw=localStorage.getItem(key);const v=raw===
 function savePresets(key,items){try{const old=localStorage.getItem(key);if(old!==null&&!Array.isArray(JSON.parse(old)))throw Error('既存設定が破損しています');localStorage.setItem(key,JSON.stringify(items));return true;}catch(e){alert('登録内容を保存できませんでした。既存データが破損しているか空き容量が不足しています。'+e.message);return false;}}
 function newPresetId(){return 'P'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
 let editingDrinkId=null,editingMedicineId=null,selectedMedicineId=null;
-function allDrinks(){const custom=readPresets(DRINK_PRESET_KEY);return [...BASE_DRINKS.filter(x=>!custom.some(y=>y.id===x.id)),...custom];}
+function allDrinks(){const custom=readPresets(DRINK_PRESET_KEY);return [...BASE_DRINKS.filter(x=>!custom.some(y=>y.id===x.id)),...custom].filter(x=>!x.hidden);}
 function renderDrinkChoices(){const host=document.getElementById('drinkPresetChoices');if(!host)return;const items=allDrinks();host.innerHTML=items.map(x=>`<button type="button" class="preset-choice ${hydrationDrink===x.name?'active':''}" data-preset-drink="${safeText(x.id)}">${safeText(x.name)}<small>${Number(x.ml)||200} ml</small></button>`).join('')+'<button type="button" class="preset-choice" data-preset-drink="other">その他（直接入力）</button>';
   host.querySelectorAll('[data-preset-drink]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.presetDrink;if(id==='other'){const name=prompt('飲み物の名前を入力してください');if(!name||!name.trim())return;hydrationDrink=name.trim().slice(0,100);}else{const p=items.find(x=>x.id===id);if(!p)return;hydrationDrink=p.name;hydrationMl=Math.max(1,Math.min(5000,Number(p.ml)||200));syncHydrationUI();}renderDrinkChoices();}));
 }
-function renderMedicineChoices(){const host=document.getElementById('medicinePresetChoices');if(!host)return;const items=readPresets(MEDICINE_PRESET_KEY);host.innerHTML=items.length?items.map(x=>`<button type="button" class="preset-choice ${selectedMedicineId===x.id?'active':''}" data-preset-medicine="${safeText(x.id)}">${safeText(x.name)}<small>${safeText(x.dose||x.category||'')}</small></button>`).join(''):'<div class="hint">登録したお薬はありません。設定から登録できます。直接入力もできます。</div>';
+function renderMedicineChoices(){const host=document.getElementById('medicinePresetChoices');if(!host)return;const items=readPresets(MEDICINE_PRESET_KEY).filter(x=>!x.hidden);host.innerHTML=items.length?items.map(x=>`<button type="button" class="preset-choice ${selectedMedicineId===x.id?'active':''}" data-preset-medicine="${safeText(x.id)}">${safeText(x.name)}<small>${safeText(x.dose||x.category||'')}</small></button>`).join(''):'<div class="hint">登録したお薬はありません。設定から登録できます。直接入力もできます。</div>';
   host.querySelectorAll('[data-preset-medicine]').forEach(b=>b.addEventListener('click',()=>{const x=items.find(p=>p.id===b.dataset.presetMedicine);if(!x)return;selectedMedicineId=x.id;document.getElementById('lifeMedicationName').value=x.name;document.getElementById('lifeMedicationDose').value=x.dose||'';renderMedicineChoices();}));
 }
-function renderDrinkManager(){const items=readPresets(DRINK_PRESET_KEY),host=document.getElementById('drinkPresetList');host.innerHTML=items.length?items.map(x=>`<div class="manage-row"><span><b>${safeText(x.name)}</b><div class="hint">${Number(x.ml)||200} ml</div></span><button type="button" data-edit="${safeText(x.id)}">編集</button><button type="button" data-delete="${safeText(x.id)}">削除</button></div>`).join(''):'<div class="hint">登録した飲み物はまだありません。水・お茶・コーヒーは最初から選べます。</div>';
+function renderDrinkManager(){const items=readPresets(DRINK_PRESET_KEY),host=document.getElementById('drinkPresetList');host.innerHTML=items.length?items.map(x=>`<div class="manage-row"><span><b>${safeText(x.name)}</b><div class="hint">${Number(x.ml)||200} ml</div></span><button type="button" data-edit="${safeText(x.id)}">編集</button><button type="button" data-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button><button type="button" data-delete="${safeText(x.id)}">削除</button></div>`).join(''):'<div class="hint">登録した飲み物はまだありません。水・お茶・コーヒーは最初から選べます。</div>';
   host.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.edit);if(!x)return;editingDrinkId=x.id;document.getElementById('drinkPresetName').value=x.name;document.getElementById('drinkPresetMl').value=x.ml;document.getElementById('saveDrinkPreset').textContent='変更を保存する';document.getElementById('cancelDrinkEdit').style.display='';});
+  host.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.toggle);if(!x)return;const rows=items.map(v=>v.id===x.id?{...v,hidden:!v.hidden}:v);if(savePresets(DRINK_PRESET_KEY,rows)){renderDrinkManager();renderDrinkChoices();}});
+
   host.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.delete);if(!x||!confirm('「'+x.name+'」の登録を削除しますか？過去の記録は残ります。'))return;if(savePresets(DRINK_PRESET_KEY,items.filter(v=>v.id!==x.id))){clearDrinkEditor();renderDrinkManager();}});
 }
 function clearDrinkEditor(){editingDrinkId=null;document.getElementById('drinkPresetName').value='';document.getElementById('drinkPresetMl').value=200;document.getElementById('saveDrinkPreset').textContent='飲み物を登録する';document.getElementById('cancelDrinkEdit').style.display='none';}
 document.getElementById('cancelDrinkEdit').onclick=clearDrinkEditor;
 document.getElementById('saveDrinkPreset').onclick=()=>{const name=document.getElementById('drinkPresetName').value.trim(),ml=Number(document.getElementById('drinkPresetMl').value);if(!name||!Number.isInteger(ml)||ml<1||ml>5000){alert('飲み物名と1〜5000mlの量を入力してください');return;}const rows=readPresets(DRINK_PRESET_KEY);if(rows.some(x=>x.name===name&&x.id!==editingDrinkId)){alert('同じ名前が登録されています');return;}if(editingDrinkId){const x=rows.find(v=>v.id===editingDrinkId);if(x){x.name=name;x.ml=ml;}}else rows.push({id:newPresetId(),name,ml});if(savePresets(DRINK_PRESET_KEY,rows)){clearDrinkEditor();renderDrinkManager();}};
-function renderMedicineManager(){const items=readPresets(MEDICINE_PRESET_KEY),host=document.getElementById('medicinePresetList');host.innerHTML=items.length?items.map(x=>`<div class="manage-row"><span><b>${safeText(x.name)}</b><div class="hint">${safeText(x.category)} / ${safeText(x.dose||'量未設定')} / ${safeText(x.timing||'タイミング未設定')}</div></span><button type="button" data-edit="${safeText(x.id)}">編集</button><button type="button" data-delete="${safeText(x.id)}">削除</button></div>`).join(''):'<div class="hint">登録したお薬はまだありません。</div>';
+function renderMedicineManager(){const items=readPresets(MEDICINE_PRESET_KEY),host=document.getElementById('medicinePresetList');host.innerHTML=items.length?items.map(x=>`<div class="manage-row"><span><b>${safeText(x.name)}</b><div class="hint">${safeText(x.category)} / ${safeText(x.dose||'量未設定')} / ${safeText(x.timing||'タイミング未設定')}</div></span><button type="button" data-edit="${safeText(x.id)}">編集</button><button type="button" data-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button><button type="button" data-delete="${safeText(x.id)}">削除</button></div>`).join(''):'<div class="hint">登録したお薬はまだありません。</div>';
   host.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.edit);if(!x)return;editingMedicineId=x.id;document.getElementById('medicinePresetName').value=x.name;document.getElementById('medicinePresetType').value=x.category||'処方薬';document.getElementById('medicinePresetDose').value=x.dose||'';document.getElementById('medicinePresetTiming').value=x.timing||'';document.getElementById('saveMedicinePreset').textContent='変更を保存する';document.getElementById('cancelMedicineEdit').style.display='';});
+  host.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.toggle);if(!x)return;const rows=items.map(v=>v.id===x.id?{...v,hidden:!v.hidden}:v);if(savePresets(MEDICINE_PRESET_KEY,rows)){renderMedicineManager();renderMedicineChoices();}});
   host.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const x=items.find(v=>v.id===b.dataset.delete);if(!x||!confirm('「'+x.name+'」の登録を削除しますか？過去の服薬記録は残ります。'))return;if(savePresets(MEDICINE_PRESET_KEY,items.filter(v=>v.id!==x.id))){clearMedicineEditor();renderMedicineManager();}});
 }
 function clearMedicineEditor(){editingMedicineId=null;['medicinePresetName','medicinePresetDose','medicinePresetTiming'].forEach(id=>document.getElementById(id).value='');document.getElementById('medicinePresetType').value='処方薬';document.getElementById('saveMedicinePreset').textContent='お薬を登録する';document.getElementById('cancelMedicineEdit').style.display='none';}
 document.getElementById('cancelMedicineEdit').onclick=clearMedicineEditor;
 document.getElementById('saveMedicinePreset').onclick=()=>{const name=document.getElementById('medicinePresetName').value.trim(),category=document.getElementById('medicinePresetType').value,dose=document.getElementById('medicinePresetDose').value.trim(),timing=document.getElementById('medicinePresetTiming').value.trim();if(!name){alert('薬の名前を入力してください');return;}const rows=readPresets(MEDICINE_PRESET_KEY);if(editingMedicineId){const x=rows.find(v=>v.id===editingMedicineId);if(x)Object.assign(x,{name,category,dose,timing});}else rows.push({id:newPresetId(),name,category,dose,timing});if(savePresets(MEDICINE_PRESET_KEY,rows)){clearMedicineEditor();renderMedicineManager();}};
 renderDrinkManager();renderMedicineManager();
-// JSONには既存のlocalStorageのキーと追加機能を丸ごと格納。CSVは別途従来方式で継続。
+// JSONには既存のlocalStorageのキーと追加機能を丸ごと格納。CSV互換処理は従来データ向けに内部保持（設定画面には表示しない）。
 const QUICK_SESSIONS_KEY='healthTimelineQuickSessions_v1';
 const MEASURE_DEFS_KEY='healthTimelineMeasureDefinitions_v1';
 const EXERCISE_DEFS_KEY='healthTimelineExerciseDefinitions_v1';
@@ -3850,7 +3912,7 @@ const EXERCISE_LOG_KEY='healthTimelineExerciseHistory_v1';
 const SAFE_MEASURE_DEFAULTS_KEY='healthTimelineMeasureDefaults_v1';
 const SAFE_VOICE_DEFS_KEY='healthTimelineVoiceGuideDefinitions_v1';
 const SAFE_BACKUP_META_KEY='healthTimelineBackupMeta_v1';
-const BACKUP_KEYS=[SAFE_MEASURE_DEFAULTS_KEY,SAFE_VOICE_DEFS_KEY,STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY];
+const BACKUP_KEYS=[SAFE_MEASURE_DEFAULTS_KEY,SAFE_VOICE_DEFS_KEY,STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY,'symptomRecords_v1','symptomRecords_v2','symptomRecords_v3','healthTimelineNextIdRecovery_v1'];
 function safeExportObject(){
   const storage={};for(const k of BACKUP_KEYS)storage[k]=localStorage.getItem(k);
   const core=JSON.parse(storage[STORAGE_KEY_V4]||'null');
@@ -3962,28 +4024,29 @@ const detailedParts={
  '臀部':['右側','左側','中央'], '肛門・会陰部':['肛門周囲','会陰部']
 };
 function extraRegions(){
- const x=readExtra(REGION_DEFS_KEY);const obj=x[0]||{};
- return {coarse:Array.isArray(obj.coarse)?obj.coarse:[],details:obj.details&&typeof obj.details==='object'&&!Array.isArray(obj.details)?obj.details:{}};
+ const x=readExtra(REGION_DEFS_KEY),obj=x[0]||{};
+ return {coarse:Array.isArray(obj.coarse)?obj.coarse:[],details:obj.details&&typeof obj.details==='object'&&!Array.isArray(obj.details)?obj.details:{},hiddenCoarse:Array.isArray(obj.hiddenCoarse)?obj.hiddenCoarse:[],hiddenDetails:Array.isArray(obj.hiddenDetails)?obj.hiddenDetails:[]};
 }
-function availableCoarseParts(){return [...new Set([...coarseParts,...extraRegions().coarse])];}
-function availableDetails(region){return [...new Set([...(detailedParts[region]||[]),...(extraRegions().details[region]||[])])];}
+function availableCoarseParts(){const x=extraRegions();return [...new Set([...coarseParts,...x.coarse.filter(n=>!x.hiddenCoarse.includes(n))])];}
+function availableDetails(region){const x=extraRegions();return [...new Set([...(detailedParts[region]||[]),...(x.details[region]||[]).filter(n=>!x.hiddenDetails.includes(region+'|'+n))])];}
 function renderExtraRegionButtons(){
  const box=document.getElementById('extraRegionButtons');if(!box)return;
- // 身体図（正面・背面）で選択できる部位は補助一覧には重複表示しない。
  const mapRegions=new Set(Object.values(ANATOMY_ZONES).flat().map(zone=>zone.key));
- const names=[...new Set(extraRegions().coarse)].filter(name=>!mapRegions.has(name));
+ const names=[...new Set(extraRegions().coarse)].filter(name=>!mapRegions.has(name)&&!extraRegions().hiddenCoarse.includes(name));
  if(!names.length){box.innerHTML='';box.style.display='none';return;}
  box.style.display='';
  box.innerHTML='<div class="hint" style="width:100%;margin:0">身体図にない部位はこちらから選べます</div>'+names.map(n=>`<button type="button" data-extra-region="${safeText(n)}">${safeText(n)}</button>`).join('');
  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{openBodyRegionPicker(b.dataset.extraRegion);});
 }
 function renderRegionManager(){
- const defs=extraRegions(),parent=document.getElementById('detailParentRegion'),host=document.getElementById('regionManagerList');if(!host)return;
+ const d=extraRegions(),parent=document.getElementById('detailParentRegion'),host=document.getElementById('regionManagerList');if(!host)return;
  const current=parent.value;parent.innerHTML=availableCoarseParts().map(n=>`<option value="${safeText(n)}">${safeText(n)}</option>`).join('');if(availableCoarseParts().includes(current))parent.value=current;
- host.innerHTML='<h3>追加済みの部位</h3>'+(defs.coarse.length?defs.coarse.map(n=>`<div class="manage-row"><span>${safeText(n)}</span><button type="button" data-coarse-del="${safeText(n)}">削除</button></div>`).join(''):'<div class="hint">大まかな部位の追加はありません。</div>')+'<h3>追加済みの詳細部位</h3>'+
- Object.entries(defs.details).flatMap(([parent,rows])=>rows.map(name=>`<div class="manage-row"><span>${safeText(parent)} → ${safeText(name)}</span><button type="button" data-detail-parent="${safeText(parent)}" data-detail-del="${safeText(name)}">削除</button></div>`)).join('');
- host.querySelectorAll('[data-coarse-del]').forEach(b=>b.onclick=()=>{if(!confirm('登録項目を削除しますか？過去の記録は残ります。'))return;const d=extraRegions();d.coarse=d.coarse.filter(x=>x!==b.dataset.coarseDel);if(writeExtra(REGION_DEFS_KEY,[d]))refreshRegionChoices();});
- host.querySelectorAll('[data-detail-del]').forEach(b=>b.onclick=()=>{if(!confirm('この詳細部位の登録を削除しますか？過去の記録は残ります。'))return;const d=extraRegions(),p=b.dataset.detailParent;d.details[p]=(d.details[p]||[]).filter(x=>x!==b.dataset.detailDel);if(writeExtra(REGION_DEFS_KEY,[d]))refreshRegionChoices();});
+ const rows=[...d.coarse.map(n=>({type:'coarse',name:n,parent:''})),...Object.entries(d.details).flatMap(([key,names])=>(Array.isArray(names)?names:[]).map(n=>({type:'detail',name:n,parent:key})))];
+ host.innerHTML='<h3>追加済みの部位・詳細部位</h3>'+(rows.length?rows.map((r,i)=>{const hidden=r.type==='coarse'?d.hiddenCoarse.includes(r.name):d.hiddenDetails.includes(r.parent+'|'+r.name);return `<div class="manage-row ${hidden?'is-hidden':''}"><span>${safeText(r.parent?r.parent+' → '+r.name:r.name)}</span><button type="button" data-region-edit="${i}">編集</button><button type="button" data-region-toggle="${i}">${hidden?'表示':'非表示'}</button><button type="button" data-region-delete="${i}">削除</button></div>`;}).join(''):'<div class="hint">追加した部位はありません。</div>');
+ const persist=(copy)=>{if(writeExtra(REGION_DEFS_KEY,[copy]))refreshRegionChoices();};
+ host.querySelectorAll('[data-region-edit]').forEach(b=>b.onclick=()=>{const r=rows[Number(b.dataset.regionEdit)];if(!r)return;const next=prompt('新しい部位名',r.name)?.trim();if(!next||next===r.name)return;if(r.type==='coarse'){if([...coarseParts,...d.coarse].includes(next))return alert('同じ部位名があります');d.coarse=d.coarse.map(x=>x===r.name?next:x);d.hiddenCoarse=d.hiddenCoarse.map(x=>x===r.name?next:x);if(d.details[r.name]){d.details[next]=d.details[r.name];delete d.details[r.name];}d.hiddenDetails=d.hiddenDetails.map(x=>x.startsWith(r.name+'|')?next+x.slice(r.name.length):x);}else{if((d.details[r.parent]||[]).includes(next))return alert('同じ詳細名があります');d.details[r.parent]=d.details[r.parent].map(x=>x===r.name?next:x);d.hiddenDetails=d.hiddenDetails.map(x=>x===r.parent+'|'+r.name?r.parent+'|'+next:x);}persist(d);});
+ host.querySelectorAll('[data-region-toggle]').forEach(b=>b.onclick=()=>{const r=rows[Number(b.dataset.regionToggle)];if(!r)return;const key=r.type==='coarse'?'hiddenCoarse':'hiddenDetails',value=r.type==='coarse'?r.name:r.parent+'|'+r.name;d[key]=d[key].includes(value)?d[key].filter(x=>x!==value):[...d[key],value];persist(d);});
+ host.querySelectorAll('[data-region-delete]').forEach(b=>b.onclick=()=>{const r=rows[Number(b.dataset.regionDelete)];if(!r||!confirm('この登録を削除しますか？過去の記録は残ります。'))return;if(r.type==='coarse'){d.coarse=d.coarse.filter(x=>x!==r.name);d.hiddenCoarse=d.hiddenCoarse.filter(x=>x!==r.name);}else{d.details[r.parent]=(d.details[r.parent]||[]).filter(x=>x!==r.name);d.hiddenDetails=d.hiddenDetails.filter(x=>x!==r.parent+'|'+r.name);}persist(d);});
 }
 function refreshRegionChoices(){renderRegionManager();renderExtraRegionButtons();}
 document.getElementById('addCoarseRegion').onclick=()=>{const name=document.getElementById('newCoarseRegion').value.trim();if(!name)return alert('部位名を入力してください');if(availableCoarseParts().includes(name))return alert('すでに存在する部位です');const d=extraRegions();d.coarse.push(name);if(writeExtra(REGION_DEFS_KEY,[d])){document.getElementById('newCoarseRegion').value='';refreshRegionChoices();}};
@@ -4052,7 +4115,7 @@ function captureForm(s){const kind=s.kind;let block=kind==='unknown'?`<div class
  if(kind==='exercise'){
   // 運動メニューと音声メニューは保存先が異なる。表示上は一つの選択欄に統合する。
   const ordinary=exerciseDefinitions().filter(x=>!x.hidden||x.id===s.exerciseId);
-  const voice=safeVoiceItems().filter(x=>x.id!=='builtin_breathe'||x.id===s.voiceMenuId);
+  const voice=safeVoiceItems().filter(x=>(!x.hidden||x.id===s.voiceMenuId)&&(x.id!=='builtin_breathe'||x.id===s.voiceMenuId));
   const selected=s.voiceMenuId?'voice:'+s.voiceMenuId:(s.exerciseId?'exercise:'+s.exerciseId:'');
   const options=[...ordinary.map(x=>({id:'exercise:'+x.id,name:x.name})),...voice.map(x=>({id:'voice:'+x.id,name:x.name}))];
   // 登録後にメニューを削除した場合も、当時の名称を消さずに表示する。
@@ -4161,7 +4224,7 @@ function stopQuick(id){if(editingCaptureId===id && captureBox.classList.contains
   saved=created.length>0&&saveData();
   if(!saved){targets.splice(targets.length-created.length,created.length);appData.nextId=previousNextId;}
  }
- else if(['urine','sleep','bath'].includes(s.kind)){appData.lifestyleEvents.push({id:appData.nextId++,type:({urine:'排尿',sleep:'睡眠',bath:'入浴'}[s.kind]),bathType:s.kind==='bath'?(s.bathType||'湯船'):undefined,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),color:'#e9c33a',recordedAt:end,entryType:'manual',sessionId:s.id,note:s.note||''});saved=saveData();}
+ else if(['urine','sleep','bath'].includes(s.kind)){appData.lifestyleEvents.push({id:appData.nextId++,type:({urine:'排尿',sleep:'睡眠',bath:'入浴'}[s.kind]),bathType:s.kind==='bath'?(s.bathType||'湯船'):undefined,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),color:'#e9c33a',recordedAt:end,entryType:'manual',sessionId:s.id,note:s.note||''});saved=saveData();if(!saved){appData.lifestyleEvents.pop();appData.nextId--;}}
  else if(s.kind==='walk'||(s.kind==='exercise'&&(s.exerciseId||s.voiceMenuId))){const log=readExtra(EXERCISE_LOG_KEY);log.push({id:'E'+end+'_'+Math.random().toString(36).slice(2,6),sessionId:s.id,title:quickLabel(s),exerciseId:s.exerciseId||null,kind:s.kind,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),steps:s.steps??null,repsDone:s.repsDone||0,voiceMenuId:s.voiceMenuId||null,note:s.note||''});saved=writeExtra(EXERCISE_LOG_KEY,log);}
  if(!saved){s.status='incomplete';if(storeQuick(rows)){captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();alert('終了時刻を保存しました。詳細未設定の記録として残しています。あとから完成できます。');}return;}
  if(!storeQuick(rows.filter(x=>x.id!==id))){alert('履歴の保存は完了しましたが計測状態の整理に失敗しました。バックアップ後に再度画面を開いてください。');return;}
@@ -4180,6 +4243,10 @@ document.getElementById('captureSaveDetails').onclick=()=>{if(captureDetails()){
 document.getElementById('captureStop').onclick=()=>{if(editingCaptureId)stopQuick(editingCaptureId);};
 function measureDefinitions(){return readExtra(MEASURE_DEFS_KEY);}
 function renderMeasureDefinitions(){const defs=measureDefinitions(),host=document.getElementById('measureDefList');host.innerHTML=defs.map(x=>`<div class="manage-row"><span>${safeText(x.name)}（${safeText(x.unit||'単位なし')}）</span><button type="button" data-meas-rename="${safeText(x.id)}">編集</button><button type="button" data-meas-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-meas-rename]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measRename);if(!r)return;const name=prompt('測定名',r.name);if(!name?.trim())return;const unit=prompt('単位',r.unit||'');if(unit===null)return;r.name=name.trim();r.unit=unit.trim();if(writeExtra(MEASURE_DEFS_KEY,rows))renderMeasureDefinitions();renderMeasureButtons();});host.querySelectorAll('[data-meas-toggle]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measToggle);if(r){r.hidden=!r.hidden;writeExtra(MEASURE_DEFS_KEY,rows);renderMeasureDefinitions();renderMeasureButtons();}});}
+// v5.15: add deletion to custom definition rows; hide/show is retained from original managers.
+const v515OriginalMeasureDefs=renderMeasureDefinitions;
+renderMeasureDefinitions=function(...args){const result=v515OriginalMeasureDefs(...args);const host=document.getElementById('measureDefList');if(!host)return result;
+ host.querySelectorAll('[data-meas-rename]').forEach(b=>{const row=b.closest('.manage-row');if(!row||row.querySelector('[data-meas-delete]'))return;const del=document.createElement('button');del.type='button';del.textContent='削除';del.dataset.measDelete=b.dataset.measRename;row.appendChild(del);del.onclick=()=>{const rows=measureDefinitions(),target=rows.find(x=>x.id===del.dataset.measDelete);if(!target||!confirm('「'+target.name+'」の登録を削除しますか？過去の測定記録は残ります。'))return;if(writeExtra(MEASURE_DEFS_KEY,rows.filter(x=>x.id!==target.id))){renderMeasureDefinitions();renderMeasureButtons();safeRenderMeasureDefaults();}};});return result;};
 function renderMeasureButtons(){const host=document.getElementById('measureLaunchGrid');host.querySelectorAll('[data-user-measure]').forEach(x=>x.remove());measureDefinitions().filter(x=>!x.hidden).forEach(r=>{const b=document.createElement('button');b.className='measure-launch';b.type='button';b.dataset.userMeasure=r.id;b.innerHTML=`<span>📐</span><strong>${safeText(r.name)}</strong><small>${safeText(r.unit||'数値')}</small>`;b.onclick=()=>openUserMeasurement(r);host.appendChild(b);});}
 function openUserMeasurement(def){openMeasurePanel('その他');activeMeasureType=def.name;document.getElementById('measureType').value='その他';document.getElementById('measurePanelTitle').textContent=def.name+'を記録';document.getElementById('measureValueLabel').textContent=def.name+(def.unit?'（'+def.unit+'）':'');document.getElementById('measureUnit').value=def.unit||'';document.getElementById('measureUnitField').hidden=true;document.getElementById('measureValue').value=safeMeasureInitialValue(def.name);}
 // カスタム項目も既存の測定記録のフォーマット (type,value,unit,startTs,note) を利用
@@ -4188,7 +4255,12 @@ const measureSaveButton=document.getElementById('measureSave');
 document.getElementById('addMeasureDef').onclick=()=>{const name=document.getElementById('newMeasureName').value.trim(),unit=document.getElementById('newMeasureUnit').value.trim();if(!name)return alert('測定項目名を入力してください');if([...Object.keys(measureUnits),'血圧',...measureDefinitions().map(x=>x.name)].includes(name))return alert('同じ項目名があります');const rows=measureDefinitions();rows.push({id:newPresetId(),name,unit,hidden:false});if(writeExtra(MEASURE_DEFS_KEY,rows)){document.getElementById('newMeasureName').value='';document.getElementById('newMeasureUnit').value='';renderMeasureDefinitions();renderMeasureButtons();safeRenderMeasureDefaults(name);}};
 function exerciseDefinitions(){return readExtra(EXERCISE_DEFS_KEY);}
 function renderExerciseDefinitions(){const rows=exerciseDefinitions(),host=document.getElementById('exerciseDefList');host.innerHTML=rows.map(x=>`<div class="manage-row"><span>${safeText(x.name)}<small> ${x.mode==='reps'?x.reps+'回 / '+x.seconds+'秒':'時間計測'}</small></span><button type="button" data-ex-rename="${safeText(x.id)}">名前変更</button><button type="button" data-ex-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-ex-rename]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exRename),name=prompt('運動名',r?.name||'');if(name?.trim()&&r){r.name=name.trim();writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});host.querySelectorAll('[data-ex-toggle]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exToggle);if(r){r.hidden=!r.hidden;writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});}
-document.getElementById('addExerciseDef').onclick=()=>{const name=document.getElementById('newExerciseName').value.trim(),mode=document.getElementById('newExerciseMode').value,reps=Number(document.getElementById('newExerciseReps').value),seconds=Number(document.getElementById('newExerciseSeconds').value);if(!name||mode==='reps'&&(!Number.isInteger(reps)||reps<1||reps>1000||!Number.isInteger(seconds)||seconds<1||seconds>60))return alert('名前・回数・秒数を確認してください');const rows=exerciseDefinitions();rows.push({id:newPresetId(),name,mode,reps,seconds,hidden:false});if(writeExtra(EXERCISE_DEFS_KEY,rows)){document.getElementById('newExerciseName').value='';renderExerciseDefinitions();renderExercises();}};
+const v515OriginalExerciseDefs=renderExerciseDefinitions;
+renderExerciseDefinitions=function(...args){const result=v515OriginalExerciseDefs(...args);const host=document.getElementById('exerciseDefList');if(!host)return result;
+ host.querySelectorAll('[data-ex-rename]').forEach(b=>{const row=b.closest('.manage-row');if(!row||row.querySelector('[data-ex-delete]'))return;
+ const edit=b;edit.textContent='編集';edit.onclick=()=>{const rows=exerciseDefinitions(),r=rows.find(x=>x.id===edit.dataset.exRename);if(!r)return;document.getElementById('newExerciseName').value=r.name;document.getElementById('newExerciseMode').value=r.mode||'reps';document.getElementById('newExerciseReps').value=r.reps||30;document.getElementById('newExerciseSeconds').value=r.seconds||3;document.getElementById('addExerciseDef').dataset.editingId=r.id;document.getElementById('addExerciseDef').textContent='変更を保存';document.getElementById('exerciseManager').open=true;document.getElementById('newExerciseName').scrollIntoView({block:'center'});};
+ const del=document.createElement('button');del.type='button';del.textContent='削除';del.dataset.exDelete=b.dataset.exRename;row.appendChild(del);del.onclick=()=>{const rows=exerciseDefinitions(),target=rows.find(x=>x.id===del.dataset.exDelete);if(!target||!confirm('「'+target.name+'」を登録一覧から削除しますか？過去の運動記録は残ります。'))return;if(writeExtra(EXERCISE_DEFS_KEY,rows.filter(x=>x.id!==target.id))){renderExerciseDefinitions();renderExercises();}};});return result;};
+document.getElementById('addExerciseDef').onclick=()=>{const name=document.getElementById('newExerciseName').value.trim(),mode=document.getElementById('newExerciseMode').value,reps=Number(document.getElementById('newExerciseReps').value),seconds=Number(document.getElementById('newExerciseSeconds').value);if(!name||mode==='reps'&&(!Number.isInteger(reps)||reps<1||reps>1000||!Number.isInteger(seconds)||seconds<1||seconds>60))return alert('名前・回数・秒数を確認してください');const rows=exerciseDefinitions(),editId=document.getElementById('addExerciseDef').dataset.editingId;const existing=rows.find(x=>x.id===editId);if(existing)Object.assign(existing,{name,mode,reps,seconds});else rows.push({id:newPresetId(),name,mode,reps,seconds,hidden:false});if(writeExtra(EXERCISE_DEFS_KEY,rows)){document.getElementById('newExerciseName').value='';delete document.getElementById('addExerciseDef').dataset.editingId;document.getElementById('addExerciseDef').textContent='運動を登録する';renderExerciseDefinitions();renderExercises();}};
 function renderExercises(){const host=document.getElementById('exerciseMenu');const rows=exerciseDefinitions().filter(x=>!x.hidden);host.innerHTML='<div class="life-launch-grid"><button class="life-launch" type="button" data-ex-walk><span class="life-emoji">🚶</span><strong>ウォーキング</strong><small>計測・歩数入力</small></button>'+rows.map(r=>`<button class="life-launch" type="button" data-ex-run="${safeText(r.id)}"><span class="life-emoji">🏃</span><strong>${safeText(r.name)}</strong><small>${r.mode==='reps'?safeText(r.reps)+'回':'時間計測'}</small></button>`).join('')+'</div>';host.querySelector('[data-ex-walk]').onclick=()=>startQuick('walk');host.querySelectorAll('[data-ex-run]').forEach(b=>b.onclick=()=>startQuick('exercise',b.dataset.exRun));const hist=document.getElementById('exerciseHistory');hist.innerHTML=readExtra(EXERCISE_LOG_KEY).sort((a,b)=>b.startTs-a.startTs).map(r=>`<div class="record-item"><div><b>${safeText(r.title)}</b><div class="meta">${fmtDateStr(r.startTs)} ${timeWithSeconds(r.startTs)} ・ ${fmtDur(r.durationSec)}${r.steps!=null?' ・ '+safeText(r.steps)+'歩':''}${r.repsDone?' ・ '+safeText(r.repsDone)+'回':''}${r.note?' ／ メモ：'+safeText(r.note):''}</div></div><button class="del-btn" data-del-exlog="${safeText(r.id)}">削除</button></div>`).join('');hist.querySelectorAll('[data-del-exlog]').forEach(b=>b.onclick=()=>{if(htDeleteExtraSafely(EXERCISE_LOG_KEY,b.dataset.delExlog,'運動')){renderExercises();renderTimeline();renderUnifiedHistory();}});}
 // 各入力パネルを共通レイアウトに変換。既存ノードとイベントを維持する。
 document.querySelectorAll('.modal-backdrop .modal').forEach(modal=>{
@@ -4220,12 +4292,39 @@ function renderUnifiedHistory(){
   host.innerHTML=events.length?events.slice(0,unifiedHistoryVisible).map(it=>{
     const subtitle=fmtDateStr(it.startTs)+' '+timeWithSeconds(it.startTs)+(it.endTs!=null && it.endTs>it.startTs?' ～ '+fmtDateStr(it.endTs)+' '+timeWithSeconds(it.endTs)+'　｜　経過 '+fmtDur((it.endTs-it.startTs)/1000):'');
     const id=String(it.ref?.id??'');
-    return `<div class="record-item"><div style="min-width:0;flex:1"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}${it.kind==='lifestyle' && it.ref?.photoData ? `<button type="button" class="history-photo-btn" data-photo-life-id="${safeText(id)}" style="min-height:44px;margin-top:6px;padding:7px 12px;background:#047857;color:white;border:0;border-radius:8px;font-weight:700">📷 写真を見る</button>` : ''}</div><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button></div>`;
+    return `<div class="record-item"><div class="history-tap" role="button" tabindex="0" aria-label="${safeText(it.title)}の記録詳細を表示" data-uh-view-kind="${safeText(it.kind)}" data-uh-view-id="${safeText(id)}"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}${it.kind==='lifestyle' && it.ref?.photoData ? `<button type="button" class="history-photo-btn" data-photo-life-id="${safeText(id)}" style="min-height:44px;margin-top:6px;padding:7px 12px;background:#047857;color:white;border:0;border-radius:8px;font-weight:700">📷 写真を見る</button>` : ''}</div><div class="history-actions"><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button><button type="button" class="history-del" data-uh-del-kind="${safeText(it.kind)}" data-uh-del-id="${safeText(id)}">削除</button></div></div>`;
   }).join(''):'<div class="empty">記録はありません</div>';
   const more=document.getElementById('unifiedHistoryMore');
   if(more)more.style.display=events.length>unifiedHistoryVisible?'block':'none';
   host.querySelectorAll('[data-uh-kind]').forEach(b=>b.addEventListener('click',()=>openUnifiedHistoryEdit(b.dataset.uhKind,b.dataset.uhId)));
+  host.querySelectorAll('[data-uh-view-kind]').forEach(el=>{const open=()=>openUnifiedHistoryDetail(el.dataset.uhViewKind,el.dataset.uhViewId);el.addEventListener('click',e=>{if(e.target.closest('button'))return;open();});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});});
+  host.querySelectorAll('[data-uh-del-kind]').forEach(b=>b.addEventListener('click',()=>deleteUnifiedHistoryEntry(b.dataset.uhDelKind,b.dataset.uhDelId)));
   host.querySelectorAll('[data-photo-life-id]').forEach(b=>b.addEventListener('click',()=>showMealPhotoFromHistory(b.dataset.photoLifeId)));
+}
+function findUnifiedHistoryRecord(kind,id){
+ const map={pain:'painRecords',symptom:'symptomEvents',nopain:'noPainRecords',menstrual:'menstrualEvents',discharge:'dischargeEvents',lifestyle:'lifestyleEvents',sleep:'sleepEvents',wellness:'wellnessEvents'};
+ const key=map[kind];if(key){const matches=(appData[key]||[]).filter(r=>String(r.id)===String(id));return matches.length===1?{key,record:matches[0]}:null;}
+ const extraKeys={measure:MEASURE_KEY,exercise:EXERCISE_LOG_KEY,breath:BREATH_KEY};
+ if(extraKeys[kind]){const matches=readExtra(extraKeys[kind]).filter(r=>String(r.id)===String(id));return matches.length===1?{extraKey:extraKeys[kind],record:matches[0]}:null;}
+ return null;
+}
+function openUnifiedHistoryDetail(kind,id){
+ const target=findUnifiedHistoryRecord(kind,id);if(!target)return alert('記録が見つからないか、IDが重複しています。');
+ const record=target.record;
+ const labels={type:'種類',region:'部位',level:'強さ',value:'測定値',unit:'単位',note:'メモ',label:'症状',bathType:'入浴方法',mealAmount:'食事量',drink:'飲み物',amountMl:'量（ml）',medicationName:'薬の名前',medicationDose:'服用量',durationSec:'継続時間（秒）',repsDone:'実施回数',steps:'歩数',title:'運動名',color:'色',state:'状態',bloodObserved:'出血の有無',amount:'量'};
+ const info=Object.entries(record).filter(([k,v])=>Object.hasOwn(labels,k)&&v!==undefined&&v!==null&&typeof v!=='object').map(([k,v])=>labels[k]+'：'+String(v));
+ const events=buildTimelineEvents();const ev=events.find(x=>x.kind===kind&&String(x.ref?.id)===String(id));
+ const panel=document.getElementById('historyDetailText');panel.textContent=(ev?ev.title+'\n'+(ev.detail||'')+'\n':'')+'日時：'+fmtDateStr(record.startTs)+' '+timeWithSeconds(record.startTs)+(record.endTs!=null?' ～ '+fmtDateStr(record.endTs)+' '+timeWithSeconds(record.endTs):'')+'\n\n'+info.join('\n');
+ const box=document.getElementById('historyDetailDialog');box.hidden=false;
+ document.getElementById('historyDetailEdit').onclick=()=>{box.hidden=true;openUnifiedHistoryEdit(kind,id);};
+ document.getElementById('historyDetailDelete').onclick=()=>{if(deleteUnifiedHistoryEntry(kind,id))box.hidden=true;};
+ document.getElementById('historyDetailClose').focus();
+}
+function deleteUnifiedHistoryEntry(kind,id){
+ const target=findUnifiedHistoryRecord(kind,id);if(!target)return alert('記録が見つからないか、IDが重複しています。'),false;
+ const ok=target.key?deleteCoreRecordSafely(target.key,id,'履歴'):htDeleteExtraSafely(target.extraKey,id,'履歴');
+ if(ok){refreshAfterSafeDataChange();try{showMeasurements();showBreathing();renderExercises();}catch(_){ }return true;}
+ return false;
 }
 function showMealPhotoFromHistory(id){
   const record=(appData?.lifestyleEvents||[]).find(r=>String(r.id)===String(id) && r.type==='食事');
@@ -4277,7 +4376,7 @@ function openDischargeEdit(r){
     const amount=values('ef_disAmount')[0]||null,colorTags=values('ef_disColor'),stateTags=values('ef_disState');
     if(!amount&&!colorTags.length&&!stateTags.length){alert('量・色・状態のどれかを選択してください');return;}
     r.startTs=st;r.amount=amount;r.colorTags=colorTags;r.color=colorTags.join('・')||null;r.stateTags=stateTags;r.state=stateTags.join('・')||null;r.note=document.getElementById('ef_note').value;
-    saveData();closeEdit();renderDischargeHistory();renderMenstrualChart();renderTimeline();renderTrend();
+    if(!saveData())return;closeEdit();renderDischargeHistory();renderMenstrualChart();renderTimeline();renderTrend();
   };
   document.getElementById('editDelete').onclick=()=>{
     if(deleteCoreRecordSafely('dischargeEvents',r.id,'おりもの')){closeEdit();refreshAfterSafeDataChange();}
@@ -4354,7 +4453,8 @@ function safeRenderMeasureDefaults(selectedName){
  const registered=host.querySelector('#safeDefaultRegistered');
  function renderRegistered(){
   const all=safeReadMeasureDefaults();const rows=Object.entries(all).filter(([n,v])=>names.includes(n)&&v&&['preset','last','blank'].includes(v.mode));
-  registered.innerHTML=rows.length?rows.map(([n,v])=>{const desc=v.mode==='preset'?('固定値：'+v.value+' '+(measureUnits[n]||measureDefinitions().find(x=>x.name===n)?.unit||'')):v.mode==='last'?'前回の記録値':'空欄';return `<div class="manage-row"><span><b>${safeText(n)}</b><small class="registered-description">${safeText(desc)}</small></span><button type="button" data-default-edit="${safeText(n)}">編集</button></div>`;}).join(''):'<div class="hint">初期値を登録した項目はまだありません。</div>';
+  registered.innerHTML=rows.length?rows.map(([n,v])=>{const desc=v.mode==='preset'?('固定値：'+v.value+' '+(measureUnits[n]||measureDefinitions().find(x=>x.name===n)?.unit||'')):v.mode==='last'?'前回の記録値':'空欄';return `<div class="manage-row"><span><b>${safeText(n)}</b><small class="registered-description">${safeText(desc)}</small></span><button type="button" data-default-edit="${safeText(n)}">編集</button><button type="button" data-default-delete="${safeText(n)}">削除</button></div>`;}).join(''):'<div class="hint">初期値を登録した項目はまだありません。</div>';
+  registered.querySelectorAll('[data-default-delete]').forEach(b=>b.addEventListener('click',()=>{const name=b.dataset.defaultDelete;if(!confirm('「'+name+'」の初期値設定を削除しますか？過去の測定記録には影響しません。'))return;const all=safeReadMeasureDefaults();delete all[name];try{localStorage.setItem(SAFE_MEASURE_DEFAULTS_KEY,JSON.stringify(all));renderRegistered();renderSelection();}catch(e){alert('初期値設定の削除に失敗しました。');}}));
   registered.querySelectorAll('[data-default-edit]').forEach(b=>b.addEventListener('click',()=>{
     const name=b.dataset.defaultEdit;
     if(!names.includes(name))return;
@@ -4415,9 +4515,9 @@ function safeVoiceItems(){const items=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x
 function safeRenderVoice(){
  const items=safeVoiceItems();
  const sel=document.getElementById('safeVoiceMenu');
- if(sel){const old=sel.value;sel.innerHTML=items.map(x=>`<option value="${safeText(x.id)}">${safeText(x.name)}</option>`).join('');if(items.some(x=>x.id===old))sel.value=old;}
+ if(sel){const old=sel.value;sel.innerHTML=items.filter(x=>!x.hidden).map(x=>`<option value="${safeText(x.id)}">${safeText(x.name)}</option>`).join('');if(items.some(x=>x.id===old))sel.value=old;}
  const host=document.getElementById('safeVoiceList');if(!host)return;
- host.innerHTML='<div class="registered-list-heading">登録済みの音声メニュー</div>'+items.map(x=>{const builtin=x.id.startsWith('builtin_');const detail=x.steps.map(st=>st.text+' '+st.seconds+'秒').join(' → ');return `<div class="manage-row"><span><b>${safeText(x.name)}</b><small class="registered-description">${safeText(detail)} ／ ${safeText(x.repeats)}回・速度 ${safeText(x.rate||1)}${builtin?' ／ 定番メニュー':''}</small></span>${builtin?`<button type="button" data-safe-voice-edit="${safeText(x.id)}">コピーして編集</button>`:`<button type="button" data-safe-voice-edit="${safeText(x.id)}">編集</button><button type="button" data-safe-voice-del="${safeText(x.id)}">削除</button>`}</div>`;}).join('');
+ host.innerHTML='<div class="registered-list-heading">登録済みの音声メニュー</div>'+items.map(x=>{const builtin=x.id.startsWith('builtin_');const detail=x.steps.map(st=>st.text+' '+st.seconds+'秒').join(' → ');return `<div class="manage-row"><span><b>${safeText(x.name)}</b><small class="registered-description">${safeText(detail)} ／ ${safeText(x.repeats)}回・速度 ${safeText(x.rate||1)}${builtin?' ／ 定番メニュー':''}${x.hidden?' ／ 非表示':''}</small></span>${builtin?`<button type="button" data-safe-voice-edit="${safeText(x.id)}">コピーして編集</button>`:`<button type="button" data-safe-voice-edit="${safeText(x.id)}">編集</button><button type="button" data-safe-voice-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button><button type="button" data-safe-voice-del="${safeText(x.id)}">削除</button>`}</div>`;}).join('');
  host.querySelectorAll('[data-safe-voice-edit]').forEach(btn=>btn.onclick=()=>{
   const item=items.find(x=>x.id===btn.dataset.safeVoiceEdit);if(!item)return;
   const builtin=item.id.startsWith('builtin_');
@@ -4435,6 +4535,7 @@ function safeRenderVoice(){
   field.scrollIntoView({block:'center',behavior:'smooth'});
   field.focus({preventScroll:true});
  });
+ host.querySelectorAll('[data-safe-voice-toggle]').forEach(btn=>btn.onclick=()=>{const rows=readExtra(SAFE_VOICE_DEFS_KEY),r=rows.find(x=>x.id===btn.dataset.safeVoiceToggle);if(!r)return;r.hidden=!r.hidden;if(writeExtra(SAFE_VOICE_DEFS_KEY,rows))safeRenderVoice();});
  host.querySelectorAll('[data-safe-voice-del]').forEach(btn=>btn.onclick=()=>{if(!confirm('この音声メニューの設定を削除しますか？'))return;const rows=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x.id!==btn.dataset.safeVoiceDel);if(writeExtra(SAFE_VOICE_DEFS_KEY,rows))safeRenderVoice();});
 }
 function safePopulateVoices(){if(!safeVoiceSupport)return;const field=document.getElementById('safeVoiceType'),current=field.value;const voices=speechSynthesis.getVoices().filter(v=>v.lang?.startsWith('ja')&&v.localService===true);field.innerHTML='<option value="">日本語音声を自動選択</option>'+voices.map(v=>`<option value="${safeText(v.name)}">${safeText(v.name)}</option>`).join('');field.value=voices.some(v=>v.name===current)?current:'';}
@@ -4447,7 +4548,7 @@ document.getElementById('safeVoiceSave').onclick=()=>{
  if(!name||name.length>60||lines.length<1||lines.length>30||!Number.isInteger(repeats)||repeats<1||repeats>200||rate<0.5||rate>1.5)return alert('名前、動作（1～30行）、繰り返し（1～200）、速度（0.5～1.5）を確認してください。');
  const steps=[];for(const line of lines){const i=line.lastIndexOf('｜');if(i<1)return alert('動作は「足を上げます｜3」の形式で1行ずつ入力してください。');const desc=line.slice(0,i).trim(),seconds=Number(line.slice(i+1).trim());if(!desc||desc.length>150||!Number.isInteger(seconds)||seconds<1||seconds>120)return alert('文章は150字以内、秒数は1～120の整数で入力してください。');steps.push({text:desc,seconds});}
  const rows=readExtra(SAFE_VOICE_DEFS_KEY),existing=rows.find(x=>x.id===safeVoiceEditing);
- const record={id:existing?.id||newPresetId(),name,steps,repeats,rate,voice};
+ const record={id:existing?.id||newPresetId(),name,steps,repeats,rate,voice,hidden:existing?.hidden||false};
  if(existing)Object.assign(existing,record);else rows.push(record);
  if(writeExtra(SAFE_VOICE_DEFS_KEY,rows)){safeVoiceClearEdit();safeRenderVoice();const status=document.getElementById('safeVoiceSavedMessage');if(status)status.textContent='✅ '+name+' を登録済み一覧に保存しました。';}else{const status=document.getElementById('safeVoiceSavedMessage');if(status)status.textContent='⚠️ 保存に失敗しました。端末の空き容量を確認してください。';}
 };
@@ -4535,7 +4636,7 @@ breathStartButton.addEventListener('click',()=>{
 const v57RenderExercises=renderExercises;
 renderExercises=function(...args){
  const result=v57RenderExercises(...args),host=document.querySelector('#exerciseMenu .life-launch-grid');
- if(host){for(const item of safeVoiceItems().filter(x=>x.id!=='builtin_breathe')){
+ if(host){for(const item of safeVoiceItems().filter(x=>!x.hidden&&x.id!=='builtin_breathe')){
   if(item.id==='builtin_legs'&&exerciseDefinitions().some(x=>x.name===item.name))continue;
   const b=document.createElement('button');b.type='button';b.className='life-launch';b.innerHTML='<span class="life-emoji">🔊</span><strong>'+safeText(item.name)+'</strong><small>音声案内付き・記録に保存</small>';
   b.onclick=()=>startQuick('exercise',null,{title:item.name,voiceMenuId:item.id});host.appendChild(b);
