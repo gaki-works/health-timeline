@@ -813,7 +813,7 @@ input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0;}
       <button class="ghost-btn" id="importCsvBtn">⬆ CSVを取り込む</button>
       <div class="note" style="margin-top:10px">取り込む前に内容を確認する画面が表示されます。取り込みもこの端末内だけで行われ、外部サーバーには送信されません。</div>
     </div>
-    </div><!-- v5.16: 即時取り消しの固定ボタンは撤去。ゴミ箱から30日以内に復元できます。 -->
+    </div><!-- v5.17: 即時取り消しの固定ボタンは撤去。ゴミ箱から30日以内に復元できます。 -->
     <div class="card" id="htTrashPanel"><h2>🗑️ ゴミ箱（30日間保管）</h2><div class="hint">削除した記録はこの端末内のゴミ箱へ移動し、削除から30日以内に復元できます。30日を過ぎた記録は、次にアプリを開いた際などに完全削除されます。ゴミ箱も完全JSONバックアップに含まれます。設定メニューの削除には適用されません。</div><div id="htTrashList" class="registered-list" role="status" aria-live="polite"></div></div><div class="card" id="integrityRepairPanel"><h2>記録IDの整合性チェック・修復</h2><div class="hint">過去の記録IDに不整合があるときのみ使用します。重複したIDを修復する前に完全JSONを保存してください。</div><button type="button" class="ghost-btn" id="checkCoreIds">IDの状態を確認</button><button type="button" class="ghost-btn" id="repairCoreIds">バックアップ後にIDを修復</button></div><div class="card">
       <h2>データの削除</h2>
       <div class="hint">すべての記録・設定と旧形式の端末内データを削除します。完全JSONを端末外にも保管し、ファイルアプリで確認してください。</div>
@@ -1672,25 +1672,28 @@ function renderActivePanel(){
   });
 }
 
-// v5.16: コア記録・拡張記録を30日保管するゴミ箱。
+// v5.17: コア記録・拡張記録を30日保管するゴミ箱。
 // 元の保存形式は変更せず、別のlocalStorageキーに保存する。
 const HT_TRASH_RETENTION_MS=30*24*60*60*1000;
 function htReadTrash(){
  const raw=localStorage.getItem('healthTimelineDeletedRecords_v1');
+ window.__htTrashSnapshot=raw;
  if(raw===null)return [];
  const rows=JSON.parse(raw);
- if(!Array.isArray(rows)||rows.some(x=>!x||typeof x!=='object'||!['core','extra'].includes(x.scope)||typeof x.key!=='string'||!x.record||!Number.isFinite(x.deletedAt)))throw Error('ゴミ箱のデータを読み取れません。削除・復元を停止してください。');
+ if(!Array.isArray(rows)||rows.some(x=>!x||typeof x!=='object'||!(x.scope==='core'?HT_CORE_RECORD_KEYS.includes(x.key):x.scope==='extra'&&[MEASURE_KEY,BREATH_KEY,EXERCISE_LOG_KEY].includes(x.key))||typeof x.token!=='string'||!x.record||typeof x.record!=='object'||x.record.id==null||!Number.isFinite(x.deletedAt)))throw Error('ゴミ箱のデータを読み取れません。削除・復元を停止してください。');
  return rows;
 }
 function htWriteTrash(rows){
  try{
   const old=localStorage.getItem('healthTimelineDeletedRecords_v1');
-  if(old!==null)htReadTrash();
+  if(window.__htTrashSnapshot!==undefined && old!==window.__htTrashSnapshot)throw Error('TRASH_CONFLICT');
+  if(old!==null){const existing=JSON.parse(old);if(!Array.isArray(existing))throw Error('CORRUPT_TRASH');}
   const json=JSON.stringify(rows);
   localStorage.setItem('healthTimelineDeletedRecords_v1',json);
   if(localStorage.getItem('healthTimelineDeletedRecords_v1')!==json)throw Error('保存後の照合失敗');
+  window.__htTrashSnapshot=json;
   return true;
- }catch(e){console.error('ゴミ箱保存エラー',e);alert('ゴミ箱を保存できませんでした。既存データ保護のため操作を中止しました。空き容量をご確認ください。');return false;}
+ }catch(e){console.error('ゴミ箱保存エラー',e);alert(e.message==='TRASH_CONFLICT'?'別の画面でゴミ箱が更新されました。上書きを止めています。画面を開き直してから操作してください。':'ゴミ箱を保存できませんでした。既存データ保護のため操作を中止しました。空き容量をご確認ください。');return false;}
 }
 function htTrashEntry(scope,key,record){
  return {token:'T'+Date.now()+'_'+Math.random().toString(36).slice(2,12),scope,key,record:JSON.parse(JSON.stringify(record)),deletedAt:Date.now()};
@@ -2371,11 +2374,13 @@ function renderCandidate(){
     b.addEventListener('click', () => {
       const kind = b.getAttribute('data-cand');
       if(kind === 'sleep'){
+        const before=JSON.stringify(appData);
         appData.sleepEvents.push({ id: appData.nextId++, startTs: rangeStart, endTs: rangeEnd, recordedAt: Date.now(), entryType: 'candidate', note: '記録のない時間から作成された候補（ユーザーが選択）' });
-        saveData();
+        if(!saveData()){appData=JSON.parse(before);return;}
       } else if(kind === 'wellness'){
+        const before=JSON.stringify(appData);
         appData.wellnessEvents.push({ id: appData.nextId++, startTs: rangeStart, endTs: rangeEnd, recordedAt: Date.now(), entryType: 'candidate', note: '記録のない時間から作成された候補（ユーザーが選択）' });
-        saveData();
+        if(!saveData()){appData=JSON.parse(before);return;}
       }
       holder.innerHTML = '';
       renderTimeline();
@@ -3820,18 +3825,30 @@ touchActive();
 
 /* ===== 新機能（既存データの保存キーとは分離）===== */
 
-function readExtra(key){try{const arr=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(arr)?arr:[];}catch(e){return [];}}
+// 各キーの最後の読取状態を保持し、別画面の更新を静かに上書きしない。
+const HT_EXTRA_SNAPSHOTS=new Map();
+function readExtra(key){
+ try{
+  const raw=localStorage.getItem(key);
+  const arr=JSON.parse(raw||'[]');
+  if(!Array.isArray(arr))return [];
+  HT_EXTRA_SNAPSHOTS.set(key,raw);
+  return arr;
+ }catch(e){return [];}
+}
 function writeExtra(key,rows){
  try{
   // 読み取り失敗した保存データを空配列と誤認して上書きしない。
   const existing=localStorage.getItem(key);
+  if(HT_EXTRA_SNAPSHOTS.has(key) && existing!==HT_EXTRA_SNAPSHOTS.get(key))throw Error('EXTRA_CONFLICT');
   if(existing!==null){
    let parsed;try{parsed=JSON.parse(existing);}catch(_){throw new Error('CORRUPT_EXISTING');}
    if(!Array.isArray(parsed))throw new Error('CORRUPT_EXISTING');
   }
-  const next=JSON.stringify(rows);localStorage.setItem(key,next);if(localStorage.getItem(key)!==next)throw Error('書き込み後の検証に失敗');return true;
+  const next=JSON.stringify(rows);localStorage.setItem(key,next);if(localStorage.getItem(key)!==next)throw Error('書き込み後の検証に失敗');HT_EXTRA_SNAPSHOTS.set(key,next);return true;
  }catch(e){
-  if(e.message==='CORRUPT_EXISTING')alert('既存の保存データに読み込み異常があります。上書きせずに停止しました。JSONバックアップを保管して確認してください。');
+  if(e.message==='EXTRA_CONFLICT')alert('別の画面で保存項目が更新されました。上書きを止めました。画面を開き直してください。');
+  else if(e.message==='CORRUPT_EXISTING')alert('既存の保存データに読み込み異常があります。上書きせずに停止しました。JSONバックアップを保管して確認してください。');
   else alert('ブラウザの保存領域への書き込みに失敗しました。バックアップを作成してください。');
   return false;
  }
@@ -4021,6 +4038,22 @@ function safeValidateBackup(value){
   for(const [k,v] of Object.entries(value.storage)){
     if(v!==null&&typeof v!=='string')throw Error('保存項目 '+k+' の形式が違います');
     if(v!==null)JSON.parse(v);
+  }
+  // ゴミ箱は別キー。改ざんされたバックアップから任意キーへ書き戻さない。
+  if(value.storage[HT_TRASH_KEY]!=null){
+    const trash=JSON.parse(value.storage[HT_TRASH_KEY]);
+    const extraAllowed=new Set([MEASURE_KEY,BREATH_KEY,EXERCISE_LOG_KEY]);
+    const coreAllowed=new Set(HT_CORE_RECORD_KEYS);
+    if(!Array.isArray(trash)||trash.length>100000)throw Error('ゴミ箱のデータ形式が不正です');
+    const tokens=new Set();
+    for(const entry of trash){
+      if(!entry||typeof entry!=='object'||Array.isArray(entry)||typeof entry.token!=='string'||entry.token.length>120||tokens.has(entry.token)
+       ||!Number.isFinite(entry.deletedAt)||entry.deletedAt<0
+       ||!(entry.scope==='core'?coreAllowed.has(entry.key):entry.scope==='extra'&&extraAllowed.has(entry.key))
+       ||!entry.record||typeof entry.record!=='object'||Array.isArray(entry.record)||entry.record.id==null)
+        throw Error('ゴミ箱に不正な記録があります');
+      tokens.add(entry.token);
+    }
   }
   if(!value.storage[STORAGE_KEY_V4])throw Error('主要な健康記録がありません');
   const core=JSON.parse(value.storage[STORAGE_KEY_V4]);
@@ -4448,7 +4481,7 @@ function openDischargeEdit(r){
     if(deleteCoreRecordSafely('dischargeEvents',r.id,'おりもの')){closeEdit();refreshAfterSafeDataChange();}
   };
 }
-// v5.16: 拡張記録も同じ30日ゴミ箱へ保管する。
+// v5.17: 拡張記録も同じ30日ゴミ箱へ保管する。
 function htDeleteExtraSafely(key,id,label){
  const rows=readExtra(key),hits=rows.filter(r=>String(r.id)===String(id));
  if(hits.length!==1){alert('記録IDが重複しているか、見つかりません。削除を中止しました。');return false;}
@@ -4729,7 +4762,7 @@ renderExercises=function(...args){
 // 自作ガイドの追加・削除後は運動メニューも同期して更新。
 const v57SafeRenderVoice=safeRenderVoice;
 safeRenderVoice=function(...args){const r=v57SafeRenderVoice(...args);renderExercises();return r;};
-// v5.16: 編集画面で保存失敗してもメモリ内の記録を勝手に変更しない。
+// v5.17: 編集画面で保存失敗してもメモリ内の記録を勝手に変更しない。
 // 編集関数が設定するsaveハンドラを包み、保存が確定しなかった場合は既存オブジェクトを原位置へ復旧する。
 function htSafeguardCoreEdit(opener){return function(...args){
  const out=opener.apply(this,args),button=document.getElementById('editSave'),original=button?.onclick;
