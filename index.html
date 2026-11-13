@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'none'; object-src 'none'; frame-src 'self' blob:; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>health-timeline | 健康・症状記録</title>
 <style>
@@ -484,11 +485,31 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
  .modal-backdrop .modal .field-row>.field,.capture-body .field-row>.field{width:100%!important;min-width:0!important;flex:0 0 auto!important}
  .modal-backdrop .modal .field-row input,.capture-body .field-row input{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
 }
+/* 安全性と操作性を優先したスマホ共通入力 */
+input[type="date"],input[type="time"],input[type="datetime-local"],input.time-hms{width:100%;min-width:0;max-width:100%;box-sizing:border-box;}
+.field-row>.field{min-width:0;}
+@media(max-width:640px){.field-row{display:flex!important;flex-direction:column!important;gap:12px!important}.field-row>.field{width:100%!important;min-width:0!important;max-width:100%!important;flex:auto!important}.field-row input{width:100%!important;min-width:0!important;max-width:100%!important;}}
+#safeVoiceCard .field-row{display:flex;flex-wrap:wrap;gap:8px}#safeVoiceCard .field-row button{min-height:48px;flex:1;min-width:100px}
+#safeMeasureDefaultManager .field-row{margin-bottom:14px}
+/* v5.7: iPhone向け秒入力と日付の横幅固定 */
+.modal-backdrop .modal input[type="date"]{min-width:0;width:100%;max-width:100%;box-sizing:border-box;display:block;}
+.modal-backdrop .modal input[inputmode="numeric"][maxlength="8"]{font-variant-numeric:tabular-nums;letter-spacing:.04em;min-height:50px;}
+.modal-backdrop .modal .field-row{display:flex;flex-direction:column;gap:12px;}
+.modal-backdrop .modal .field-row>.field{min-width:0;width:100%;flex:0 0 auto;}
+#guideVoiceEnabled,#breathVoiceEnabled{width:20px;height:20px;vertical-align:middle;}
+
+/* v5.10: saved settings are visible and editable, consistent with pain-region manager */
+.registered-list-heading{font-weight:700;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border,#475569)}
+.registered-description{display:block;font-size:12px;line-height:1.5;opacity:.82;margin-top:4px;overflow-wrap:anywhere}
+#safeDefaultRegistered .manage-row,#safeVoiceList .manage-row{align-items:center;gap:8px}
+#safeDefaultRegistered .manage-row>span,#safeVoiceList .manage-row>span{min-width:0;flex:1;overflow-wrap:anywhere}
+#safeDefaultRegistered .manage-row button,#safeVoiceList .manage-row button{flex-shrink:0;min-height:40px}
+#safeVoiceSavedMessage:not(:empty){margin:10px 0;padding:10px;border:1px solid var(--border,#475569);border-radius:10px}
 </style>
 </head>
 <body>
 <div class="app">
-  <h1>health-timeline</h1>
+  <h1>health-timeline</h1><div id="safeSaveFailure" role="alert" hidden style="background:#7f1d1d;color:#fff;border:2px solid #fecaca;padding:14px;border-radius:12px;margin:8px 0 16px;font-weight:700">⚠️ 記録を保存できませんでした。入力内容が失われる可能性があります。ブラウザやアプリを閉じず、空き容量を確認してください。</div>
 <section class="global-start" aria-label="緊急記録">
   <button type="button" id="globalInstantStart" class="global-start-button">▶ 今すぐ記録を開始<span>種類や詳細はあとから選べます</span></button>
   <div id="captureActiveGlobal" aria-live="polite"></div><div id="unifiedLegacySessions"></div>
@@ -600,18 +621,18 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
         <div class="field" id="measureValueField"><label id="measureValueLabel" for="measureValue">数値</label><input id="measureValue" type="number" step="any" inputmode="decimal"></div>
         <div class="field" id="measureBpField" hidden><label for="measureBpLow">最低血圧（mmHg）</label><input id="measureBpLow" type="number" min="1" step="1" inputmode="numeric"></div>
         <div class="field" id="measureUnitField" hidden><label for="measureUnit">単位（任意）</label><input id="measureUnit" placeholder="必要なら入力"></div>
-        <div class="field-row"><div class="field"><label for="measureDate">日付</label><input id="measureDate" type="date"></div><div class="field"><label for="measureTime">時刻（秒）</label><input id="measureTime" type="time" step="1"></div></div>
+        <div class="field-row"><div class="field"><label for="measureDate">日付</label><input id="measureDate" type="date"></div><div class="field"><label for="measureTime">時刻（秒）</label><input id="measureTime" type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" step="1"></div></div>
         <div class="field"><label for="measureNote">メモ（任意）</label><textarea id="measureNote"></textarea></div>
       </div>
       <div class="measure-modal-actions"><button class="primary-btn" id="measureSave" type="button">この内容で記録する</button><button class="ghost-btn" id="measureCancel" type="button">キャンセル</button></div>
     </div>
   </div>
   <div id="tab-relax" class="tab-content">
-    <div class="card"><h2>運動メニュー</h2><div class="hint">ウォーキングは開始・終了で計測し、歩数は終了後に入力。その他の運動は設定から登録できます。</div><div id="exerciseMenu"></div></div>
+    <div class="card"><h2>運動メニュー</h2><div class="hint">ウォーキングは開始・終了で計測し、歩数は終了後に入力。その他の運動は設定から登録できます。</div><div class="field"><label><input id="guideVoiceEnabled" type="checkbox" checked> 音声案内を使う（開始・終了ボタンと連動）</label></div><div id="exerciseMenu"></div><div id="guideVoiceState" class="hint" aria-live="polite">音声ガイドは運動の開始と同時に動きます。</div></div>
     <div class="card"><h2>呼吸ガイド（4段階）</h2><div class="hint">無理のないペースで行ってください。いつでも中止できます。</div>
       <div class="breath-scene"><div class="breath-ball" id="breathBall"></div><div class="breath-label" id="breathLabel">スタートで開始</div></div>
       <div class="breath-control-grid"><div class="field"><label for="breathIn">吸う（秒）</label><input id="breathIn" type="number" min="2" max="20" step="1" value="4"></div><div class="field"><label for="breathHold">吸ったあと止める（秒）</label><input id="breathHold" type="number" min="0" max="20" step="1" value="2"></div><div class="field"><label for="breathOut">吐く（秒）</label><input id="breathOut" type="number" min="2" max="30" step="1" value="6"></div><div class="field"><label for="breathHoldAfter">吐いたあと止める（秒）</label><input id="breathHoldAfter" type="number" min="0" max="20" step="1" value="2"></div></div><div class="hint" id="breathCycleHint">吸う 4秒 → 止める 2秒 → 吐く 6秒 → 止める 2秒（1周14秒）。息止めは0秒にもできます。</div>
-      <button class="primary-btn" id="breathToggle">呼吸ガイドを開始</button><div class="hint" id="breathElapsed"></div>
+      <div class="field-row"><div class="field"><label for="breathVoiceCycles">音声案内の繰り返し回数</label><input type="number" id="breathVoiceCycles" min="1" max="100" value="5"></div><div class="field"><label><input type="checkbox" id="breathVoiceEnabled" checked> 呼吸中に音声で秒を数える</label></div></div><button class="primary-btn" id="breathToggle">呼吸ガイドを開始</button><div class="hint" id="breathElapsed"></div>
     </div><div class="card local-history-source" hidden aria-hidden="true"><h2>運動・呼吸の履歴</h2><div id="exerciseHistory"></div><div id="breathHistory"></div></div>
   </div>
 
@@ -724,9 +745,14 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
  <button type="button" class="primary-btn" id="addDetailRegion">詳しい部位を登録</button>
  <div id="regionManagerList"></div>
  </details>
- <details class="settings-preset-panel" id="measureManager"><summary>🌡️ 身体測定項目の登録・管理</summary><div class="field"><label>測定項目名</label><input id="newMeasureName" maxlength="40" placeholder="例：腹囲"></div><div class="field"><label>単位</label><input id="newMeasureUnit" maxlength="20" placeholder="例：cm"></div><button class="primary-btn" id="addMeasureDef">測定項目を追加する</button><div id="measureDefList"></div></details>
+ <details class="settings-preset-panel" id="measureManager"><summary>🌡️ 身体測定項目の登録・管理</summary><div class="field"><label>測定項目名</label><input id="newMeasureName" maxlength="40" placeholder="例：腹囲"></div><div class="field"><label>単位</label><input id="newMeasureUnit" maxlength="20" placeholder="例：cm"></div><button class="primary-btn" id="addMeasureDef">測定項目を追加する</button><div id="measureDefList"></div>
+ <div class="settings-measure-defaults" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border,#475569)">
+   <h3 style="margin:0 0 8px">測定項目の初期値設定</h3>
+   <div class="hint">測定項目を選んで初期値を設定できます。初期値は入力補助で、記録を保存するまで測定結果にはなりません。</div>
+   <div id="safeMeasureDefaultManager"></div>
+ </div></details>
       <details class="settings-preset-panel" id="exerciseManager"><summary>🏃 運動メニューの登録・管理</summary><div class="field"><label>運動名</label><input id="newExerciseName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label>形式</label><select id="newExerciseMode"><option value="reps">回数ガイド</option><option value="timer">時間計測</option></select></div><div class="field"><label>目標回数（回数ガイドの場合）</label><input id="newExerciseReps" type="number" min="1" max="1000" value="30"></div><div class="field"><label>1回の動作時間（秒）</label><input id="newExerciseSeconds" type="number" min="1" max="60" value="3"></div><button class="primary-btn" id="addExerciseDef">運動を登録する</button><div id="exerciseDefList"></div></details>
-      <details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
+      <details class="settings-preset-panel" id="safeVoiceSettings"><summary>🔊 音声ガイドの登録・管理</summary><div class="hint">外部の読み上げAPIは使用しません。端末内の日本語音声だけを選び、利用できなければ再生しません。文章や設定はこの端末のみに保存します。</div><div id="safeVoiceList"></div><div class="field"><label for="safeVoiceName">メニュー名</label><input id="safeVoiceName" maxlength="60" placeholder="例：足上げ運動"></div><div class="field"><label for="safeVoiceSteps">動作の順番（1行に1動作：文章｜秒数）</label><textarea id="safeVoiceSteps" rows="5" placeholder="足を上げます｜3&#10;下げます｜3"></textarea></div><div class="field-row"><div class="field"><label for="safeVoiceRepeats">繰り返し回数</label><input id="safeVoiceRepeats" type="number" min="1" max="200" value="10"></div><div class="field"><label for="safeVoiceSpeed">読み上げ速度</label><input id="safeVoiceSpeed" type="number" min="0.5" max="1.5" step="0.1" value="1"></div></div><div class="field"><label for="safeVoiceType">音声（端末で利用可能な日本語音声）</label><select id="safeVoiceType"><option value="">自動選択</option></select></div><button type="button" class="primary-btn" id="safeVoiceSave">音声メニューを登録</button><button type="button" class="ghost-btn" id="safeVoiceClear">入力をクリア</button><div id="safeVoiceSavedMessage" class="hint" role="status" aria-live="polite"></div></details><details class="settings-preset-panel" id="drinkManager"><summary>🥤 飲み物の登録・管理</summary>
         <div id="drinkPresetList"></div>
         <div class="field"><label for="drinkPresetName">飲み物の名前</label><input id="drinkPresetName" maxlength="100" placeholder="例：オリーブオイルはちみつレモン"></div>
         <div class="field"><label for="drinkPresetMl">いつもの量（ml）</label><input id="drinkPresetMl" type="number" min="1" max="5000" step="1" value="200"></div>
@@ -745,10 +771,10 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <div class="card">
       <h2>完全バックアップ・復元</h2>
       <div class="hint">JSON形式で日時のミリ秒・詳細記録・写真などを保存します。新アプリへ移行する前に必ず作成してください。バックアップには個人情報が含まれます。</div>
-      <button class="primary-btn" id="exportJsonBtn">完全バックアップ（JSON）を保存</button>
+      <button class="primary-btn" id="exportJsonBtn">🔒 完全バックアップ（JSON）を保存</button><div class="hint" id="safeBackupStatus" role="status" style="margin:10px 0">バックアップには健康記録が含まれます。保存後、ファイルアプリで存在を確認してください。</div>
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none">
       <button class="ghost-btn" id="importJsonBtn">完全バックアップから復元</button>
-    </div><div class="card"><h2>データを書き出す</h2>
+    </div><div class="card"><h2>アプリの更新とホーム画面</h2><div class="hint">既にホーム画面に追加したアプリは、通常は削除・再追加せず同じURLで更新できます。記録が消えるおそれがあるため、古いアプリは削除しないでください。</div><button type="button" class="ghost-btn" id="safeReloadApp">更新のため画面を再読み込み</button><button type="button" class="ghost-btn" id="safeInstallHelp">ホーム画面に追加する方法</button></div><div class="card"><h2>データを書き出す</h2>
       <div class="hint">記録されているすべてのデータをCSVファイルとして、この端末内で生成します。外部サーバーへは送信されません。書き出したファイルには症状などの個人情報が含まれるため、取り扱いにご注意ください。</div>
       <button class="primary-btn" id="exportCsvBtn">⬇ データを書き出す（CSV）</button>
     </div>
@@ -767,16 +793,16 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <div class="card">
       <h2>ホーム画面に追加・HTML保存</h2>
       <div class="hint">iPhoneでアプリのように使うには、Safariで公開URLを開き、共有メニューから「ホーム画面に追加」を選びます。HTML保存はアプリ本体のファイルを取得する別の操作です。</div>
-      <button class="download-app-btn" id="downloadAppBtn" style="margin-top:0">📥 HTMLファイルをダウンロード（開発・保管用）</button>
+      <button class="download-app-btn" id="downloadAppBtn" style="margin-top:0">📥 HTMLファイルをダウンロード（記録データは含まれません）</button>
     </div>
-    <div class="note">データはご利用のブラウザ（localStorage）内にのみ保存されます。アカウント登録・クラウド保存・広告・アクセス解析は行いません。</div>
+    <div class="note">データはご利用のブラウザ（localStorage）内にのみ保存されます。アカウント登録・クラウド保存・広告・アクセス解析はこのHTMLから行いません。ただしGitHub PagesへのアクセスやOSの音声機能には各サービスの通信・ログが伴う場合があります。</div>
   </div>
 <section class="unified-history-section" aria-label="すべての記録履歴">
   <div class="card">
     <h2>すべての記録履歴</h2>
     <div class="hint">どの画面からも確認できます。記録を選ぶと内容や日時を編集できます。</div>
-    <div id="unifiedHistoryList" class="records-list"></div>
-    <button type="button" id="unifiedHistoryMore" class="ghost-btn" style="display:none;margin-top:12px">さらに50件表示</button>
+    <div class="field-row" style="gap:8px;margin:10px 0"><div class="field"><label for="safeHistoryKind">種類で絞り込む</label><select id="safeHistoryKind"><option value="">すべて</option><option value="pain">痛み</option><option value="symptom">症状</option><option value="menstrual">月経・出血</option><option value="discharge">おりもの</option><option value="lifestyle">生活</option><option value="measure">測定</option><option value="exercise">運動</option><option value="breath">呼吸</option><option value="sleep">睡眠</option><option value="nopain">痛みなし</option><option value="wellness">体調</option></select></div><div class="field"><label for="safeHistoryFrom">この日以降</label><input id="safeHistoryFrom" type="date"></div></div><div id="unifiedHistoryList" class="records-list"></div>
+    <button type="button" id="unifiedHistoryMore" class="ghost-btn" style="display:none;margin-top:12px">さらに10件表示</button>
   </div>
 </section>
 <section class="footer-privacy"><div class="card" id="topPrivacyNotice" style="margin-bottom:14px">
@@ -802,7 +828,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
 <div class="privacy-overlay" id="privacyOverlay" style="display:none">
   <div class="privacy-box">
     <h2>🔒 ご利用前にお読みください</h2>
-    <p>このアプリは症状データを、お使いの端末のブラウザ内にのみ保存します。アカウント登録・クラウド保存・広告・アクセス解析は行いません。</p>
+    <p>このアプリは症状データを、お使いの端末のブラウザ内にのみ保存します。アカウント登録・クラウド保存・広告・アクセス解析はこのHTMLから行いません。ただしGitHub PagesへのアクセスやOSの音声機能には各サービスの通信・ログが伴う場合があります。</p>
     <p>ブラウザのデータ削除、サイトデータの消去、端末の変更などにより記録が失われる場合があります。</p>
     <p>必要な場合は「設定」タブの「データを書き出す」をご利用ください。書き出したファイルには症状などの個人情報が含まれるため、取り扱いにはご注意ください。</p>
     <button class="primary-btn" id="privacyAckBtn">確認しました</button>
@@ -831,7 +857,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
     <div class="field-row">
       <div class="field"><label>日付</label><input type="date" id="mDate"></div>
-      <div class="field"><label>開始時刻</label><input type="time" id="mTime" step="1"></div>
+      <div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="mTime" step="1"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>持続時間（分）</label><input type="number" id="mMin" min="0" value="0"></div>
@@ -856,11 +882,11 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
     <div class="field-row">
       <div class="field"><label>開始日</label><input type="date" id="npDate"></div>
-      <div class="field"><label>開始時刻</label><input type="time" id="npTime" step="1"></div>
+      <div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="npTime" step="1"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>終了日（任意）</label><input type="date" id="npEndDate"></div>
-      <div class="field"><label>終了時刻（任意）</label><input type="time" id="npEndTime" step="1"></div>
+      <div class="field"><label>終了時刻（任意）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="npEndTime" step="1"></div>
     </div>
     <div class="field"><label>補足（任意）</label><textarea id="npNote"></textarea></div>
     <div class="modal-actions">
@@ -888,11 +914,11 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <div class="symptom-history-fields" id="symptomHistoryFields" style="display:none">
       <div class="field-row">
         <div class="field"><label>日付</label><input type="date" id="sDate"></div>
-        <div class="field"><label>時刻</label><input type="time" id="sTime" step="1"></div>
+        <div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="sTime" step="1"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>終了日（任意）</label><input type="date" id="sEndDate"></div>
-        <div class="field"><label>終了時刻（任意）</label><input type="time" id="sEndTime" step="1"></div>
+        <div class="field"><label>終了時刻（任意）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="sEndTime" step="1"></div>
       </div>
       <button type="button" class="ghost-btn symptom-history-toggle" id="sBackToNow">いまの状態に戻す</button>
     </div>
@@ -941,7 +967,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
     <div class="field-row">
       <div class="field"><label>日付</label><input type="date" id="menDate"></div>
-      <div class="field"><label>時刻</label><input type="time" id="menTime" step="1"></div>
+      <div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="menTime" step="1"></div>
     </div>
     <div class="field"><label>補足（任意）</label><textarea id="menNote"></textarea></div>
     <div class="modal-actions">
@@ -976,7 +1002,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     </div>
     <div class="field-row">
       <div class="field"><label>日付</label><input type="date" id="disDate"></div>
-      <div class="field"><label>時刻</label><input type="time" id="disTime" step="1"></div>
+      <div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="disTime" step="1"></div>
     </div>
     <div class="field"><label>補足（任意）</label><textarea id="disNote"></textarea></div>
     <div class="modal-actions">
@@ -993,7 +1019,7 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <div class="field" style="display:none"><label>記録する内容</label><div class="chip-select" id="lifeTypeChips">
       <div class="c active" data-v="排尿">排尿</div><div class="c" data-v="排便">排便</div><div class="c" data-v="食事">食事</div><div class="c" data-v="水分補給">水分補給</div><div class="c" data-v="睡眠">睡眠</div><div class="c" data-v="服薬">薬を飲んだ</div><div class="c" data-v="入浴">入浴・シャワー</div>
     </div></div>
-    <div class="field-row" id="lifeDateTimeRow"><div class="field"><label>日付</label><input type="date" id="lifeDate"></div><div class="field"><label>時刻</label><input type="time" id="lifeTime" step="1"></div></div>
+    <div class="field-row" id="lifeDateTimeRow"><div class="field"><label>日付</label><input type="date" id="lifeDate"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="lifeTime" step="1"></div></div>
     <div id="lifeUrinationFields" style="display:none">
       <div class="quick-now-box" id="urinationQuickBox">
         <div class="quick-now-label">排尿の時間をその場で記録</div>
@@ -1008,9 +1034,9 @@ canvas.pure-canvas { width: 100%; height: 100%; display: block; }
     <div id="lifeMealFields" style="display:none"><div class="field"><label>食事量</label><div class="meal-range-wrap"><input type="range" id="lifeMealAmount" min="0" max="3" step="1" value="1"><div class="meal-range-labels"><span>少量</span><span>普通</span><span>腹八分目</span><span>満腹</span></div><div class="meal-range-value" id="lifeMealAmountLabel">普通</div></div></div><div class="field"><label>食事の写真（任意）</label><input type="file" id="lifeMealPhoto" accept="image/*" capture="environment"><div class="hint">写真は縮小してこの端末内に保存します。</div><img id="lifeMealPhotoPreview" alt="食事写真プレビュー" style="display:none;max-width:100%;max-height:220px;border-radius:10px;margin-top:8px"></div></div>
     <div id="lifeBowelFields" style="display:none"><div class="field"><label>便の形（複数選択可・任意）</label><div class="bowel-matrix-wrap"><div class="bowel-grid" id="lifeBowelMatrix" role="grid" aria-label="便の形と量"></div><div class="bowel-matrix-value" id="lifeBowelValue">必要な組み合わせを選択してください</div></div><div class="bleeding-matrix-hint">形が変わった場合は、当てはまるものを複数選択できます。⑥は泥状、⑦は水のような便です。</div></div><div class="field"><label>便の色（複数選択可）</label><div class="chip-select multi-select" id="lifeBowelColorChips"><button type="button" class="c" data-v="黄褐色">黄褐色</button><button type="button" class="c" data-v="茶色">茶色</button><button type="button" class="c" data-v="濃い茶色">濃い茶色</button><button type="button" class="c" data-v="緑">緑</button><button type="button" class="c" data-v="赤">赤</button><button type="button" class="c" data-v="暗赤色">暗赤色</button><button type="button" class="c" data-v="黒">黒</button><button type="button" class="c" data-v="白っぽい">白っぽい</button><button type="button" class="c" data-v="その他">その他</button></div><div class="hint">混ざっている色をすべて選択できます。</div><label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" id="lifeBowelBlood" style="width:22px;height:22px">血液が混じっている／血液のように見える</label><div class="hint">見た目の記録です。原因の判定ではありません。</div></div></div>
     <div id="lifeHydrationFields" style="display:none"><div class="field"><label>飲み物</label><div id="drinkPresetChoices" class="preset-choices"></div><div class="chip-select" id="hydrationDrinkChips" style="display:none"><div class="c active" data-drink="水">水</div><div class="c" data-drink="お茶">お茶</div><div class="c" data-drink="コーヒー">コーヒー</div><div class="c" data-drink="その他">その他</div></div></div><div class="field"><label>量：<b id="hydrationMlLabel">200 ml</b></label><input type="range" class="pain-slider" id="hydrationSlider" min="0" max="1000" step="10" value="200"><div class="field" style="margin-top:8px"><input type="number" id="hydrationNum" min="0" max="5000" step="10" value="200" inputmode="numeric" style="width:120px"> ml</div></div></div>
-    <div id="lifeSleepFields" style="display:none"><div class="hint">寝た時刻と起きた時刻を入力してください。</div><div class="field-row"><div class="field"><label>就寝時刻</label><input type="time" id="lifeSleepStart" step="1"></div><div class="field"><label>起床時刻</label><input type="time" id="lifeSleepEnd" step="1"></div></div></div>
+    <div id="lifeSleepFields" style="display:none"><div class="hint">寝た時刻と起きた時刻を入力してください。</div><div class="field-row"><div class="field"><label>就寝時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="lifeSleepStart" step="1"></div><div class="field"><label>起床時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="lifeSleepEnd" step="1"></div></div></div>
     <div id="lifeMedicationFields" style="display:none"><div class="field"><label>登録済みのお薬</label><div id="medicinePresetChoices" class="preset-choices"></div></div><div class="field"><label>薬の名前</label><input type="text" id="lifeMedicationName" placeholder="薬の名前"></div><div class="field"><label>服用量（任意）</label><input type="text" id="lifeMedicationDose" placeholder="例：1錠、5mg"></div><div class="hint">薬の内容や量は入力したとおりに記録します。</div></div>
-    <div id="lifeBathFields" style="display:none"><div class="field"><label>入浴方法</label><div class="chip-select" id="lifeBathType"><div class="c active" data-v="湯船">湯船</div><div class="c" data-v="シャワー">シャワー</div></div></div><div class="field-row"><div class="field"><label>開始時刻</label><input type="time" id="lifeBathStart" step="1"></div><div class="field"><label>終了時刻（任意）</label><input type="time" id="lifeBathEnd" step="1"></div></div></div>
+    <div id="lifeBathFields" style="display:none"><div class="field"><label>入浴方法</label><div class="chip-select" id="lifeBathType"><div class="c active" data-v="湯船">湯船</div><div class="c" data-v="シャワー">シャワー</div></div></div><div class="field-row"><div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="lifeBathStart" step="1"></div><div class="field"><label>終了時刻（任意）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="lifeBathEnd" step="1"></div></div></div>
     <div class="field" id="lifeColorField"><label>色（任意）</label><div class="life-color-swatches" id="lifeColorSwatches" aria-label="色見本から選択">
       <button type="button" class="life-color-swatch active" data-color="#e9c33a" style="--swatch:#e9c33a" aria-label="黄色"></button>
       <button type="button" class="life-color-swatch" data-color="#f59e0b" style="--swatch:#f59e0b" aria-label="琥珀色"></button>
@@ -1126,10 +1152,10 @@ function allRegionKeysUnique(){
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
 function fmtDateStr(ts){ const d=new Date(ts); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
-function fmtTimeStr(ts){ const d=new Date(ts); return pad2(d.getHours())+':'+pad2(d.getMinutes()); }
-function fmtJp(ts){ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes()); }
+function fmtTimeStr(ts){ return timeWithSeconds(ts); }
+function fmtJp(ts){ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+timeWithSeconds(ts); }
 function fmtDayHeader(ts){ const d=new Date(ts); const w=['日','月','火','水','木','金','土'][d.getDay()]; return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+w+'）'; }
-function fmtDur(sec){ if(sec==null) return ''; sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; if(h>0) return h+'時間'+m+'分'; if(m>0) return m+'分'+s+'秒'; return s+'秒'; }
+function fmtDur(sec){ if(sec==null) return ''; sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; if(h>0) return h+'時間'+m+'分'+s+'秒'; if(m>0) return m+'分'+s+'秒'; return s+'秒'; }
 function tsFromInputs(dateStr,timeStr){ if(!dateStr||!timeStr) return NaN; const normalized=/^\d{2}:\d{2}$/.test(timeStr)?timeStr+':00':timeStr; if(!/^\d{2}:\d{2}:\d{2}$/.test(normalized))return NaN; const [h,m,sec]=normalized.split(':').map(Number);if(h>23||m>59||sec>59)return NaN; const ts=new Date(dateStr+'T'+normalized).getTime();return Number.isFinite(ts)?ts:NaN; }
 function timeWithSeconds(ts){ if(ts==null || !Number.isFinite(Number(ts)))return ''; const d=new Date(ts);return pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
 function editedTimestamp(dateId,timeId,original){
@@ -1144,6 +1170,7 @@ function editedOptionalEnd(dateId,timeId,original){
  if(!de.value||!ti.value)return NaN;
  return editedTimestamp(dateId,timeId,original);
 }
+function safeJsonScript(value){return JSON.stringify(value).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');}
 function safeText(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function escCsv(v){ v = (v===null||v===undefined) ? '' : String(v); if(/[",\n]/.test(v)){ v = '"'+v.replace(/"/g,'""')+'"'; } return v; }
 
@@ -1591,7 +1618,7 @@ function renderRecordsList(){
 ========================================================= */
 const painBackdrop = document.getElementById('manualBackdrop');
 function openManualPainModal(sourceRecord=null){
-  document.getElementById('mRegion').innerHTML = allRegionKeysUnique().map(k => `<option value="${k}">${k}</option>`).join('');
+  document.getElementById('mRegion').innerHTML = allRegionKeysUnique().map(k => `<option value="${safeText(k)}">${safeText(k)}</option>`).join('');
   const now = new Date();
   const baseTs = sourceRecord ? sourceRecord.startTs : now.getTime();
   document.getElementById('mDate').value = fmtDateStr(baseTs);
@@ -1646,7 +1673,7 @@ document.getElementById('mSave').addEventListener('click', () => {
 const noPainBackdrop = document.getElementById('noPainBackdrop');
 function openNoPainModal(){
   const sel = document.getElementById('npRegion');
-  sel.innerHTML = `<option value="${NO_PAIN_ALL}">全身</option>` + allRegionKeysUnique().map(k => `<option value="${k}">${k}</option>`).join('');
+  sel.innerHTML = `<option value="${safeText(NO_PAIN_ALL)}">全身</option>` + allRegionKeysUnique().map(k => `<option value="${safeText(k)}">${safeText(k)}</option>`).join('');
   const now = new Date();
   document.getElementById('npDate').value = fmtDateStr(now.getTime());
   document.getElementById('npTime').value = fmtTimeStr(now.getTime());
@@ -1828,7 +1855,7 @@ function saveSelectedSymptoms(startTs, manualEndTs=null){
   saveData(); symptomBackdrop.classList.remove('open'); renderSymptomHistory();renderActiveSymptomSessions();renderTimeline();touchActive(); return true;
 }
 function commitSymptomSegment(session,endTs){ const r=appData.symptomEvents.find(x=>x.sessionId===session.sessionId&&x.segmentIndex===session.segmentIndex); if(r){r.endTs=endTs;r.durationSec=Math.max(0,Math.round((endTs-r.startTs)/1000));r.value=session.level;} saveData(); }
-function renderActiveSymptomSessions(){ const holder=document.getElementById('activeSymptomPanel');if(!holder)return;const sessions=Object.values(activeSymptomSessions);if(!sessions.length){holder.innerHTML='';return;} holder.innerHTML=sessions.map(s=>`<div class="symptom-session-card is-recording"><div class="session-head"><div class="session-name">${s.label}</div><span class="status-badge rec">● 記録中</span></div><div class="session-time">開始：${fmtJp(s.sessionStart)}</div><div class="slider-container"><div class="symptom-range-value" id="activeSymVal-${s.sessionId}">強さ：${s.level} / 10</div><input type="range" class="pain-slider symptom-range" data-active-symptom="${s.sessionId}" min="0" max="10" step="1" value="${s.level}"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div><button class="rec-btn session-end" data-end-symptom="${s.sessionId}">記録終了</button><div class="tip-txt">強さを変えると、その時刻で前の区間を確定します。</div></div>`).join('');
+function renderActiveSymptomSessions(){ const holder=document.getElementById('activeSymptomPanel');if(!holder)return;const sessions=Object.values(activeSymptomSessions);if(!sessions.length){holder.innerHTML='';return;} holder.innerHTML=sessions.map(s=>`<div class="symptom-session-card is-recording"><div class="session-head"><div class="session-name">${safeText(s.label)}</div><span class="status-badge rec">● 記録中</span></div><div class="session-time">開始：${fmtJp(s.sessionStart)}</div><div class="slider-container"><div class="symptom-range-value" id="activeSymVal-${s.sessionId}">強さ：${s.level} / 10</div><input type="range" class="pain-slider symptom-range" data-active-symptom="${s.sessionId}" min="0" max="10" step="1" value="${s.level}"><div class="slider-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div></div><button class="rec-btn session-end" data-end-symptom="${s.sessionId}">記録終了</button><div class="tip-txt">強さを変えると、その時刻で前の区間を確定します。</div></div>`).join('');
   holder.querySelectorAll('[data-active-symptom]').forEach(sl=>sl.addEventListener('input',()=>{const id=sl.dataset.activeSymptom,s=activeSymptomSessions[id];if(!s)return;const v=parseInt(sl.value,10)||0;if(v===s.level)return;const now=Date.now();commitSymptomSegment(s,now);s.segmentIndex++;s.segStart=now;s.level=v;appData.symptomEvents.push({id:appData.nextId++,type:s.key,label:s.label,kind:'intensity',value:v,unit:'/10',startTs:now,endTs:null,recordedAt:Date.now(),entryType:'realtime',sessionId:s.sessionId,segmentIndex:s.segmentIndex,note:s.note||''});saveData();const out=document.getElementById('activeSymVal-'+id);if(out)out.textContent='強さ：'+v+' / 10';renderSymptomHistory();renderTimeline();}));
   holder.querySelectorAll('[data-end-symptom]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.endSymptom,s=activeSymptomSessions[id];if(!s)return;commitSymptomSegment(s,Date.now());delete activeSymptomSessions[id];saveData();renderActiveSymptomSessions();renderSymptomHistory();renderTimeline();}));
 }
@@ -1857,8 +1884,8 @@ function renderSymptomHistory(){
     const tag = r.entryType === 'manual' ? '<span class="entry-tag manual">後入力</span>' : (r.entryType === 'migrated' ? '<span class="entry-tag migrated">移行</span>' : '');
     return `<div class="record-item" data-edit-symptom="${r.id}">
       <div class="left"><div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${r.label}</b><span style="color:var(--muted);font-size:12px">${valTxt}</span>${tag}</div>
-        <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs ? ('〜'+fmtTimeStr(r.endTs)) : '〜記録中'}${r.note?(' ／ '+r.note):''}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${safeText(r.label)}</b><span style="color:var(--muted);font-size:12px">${safeText(valTxt)}</span>${tag}</div>
+        <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs ? ('〜'+fmtTimeStr(r.endTs)) : '〜記録中'}${r.note?(' ／ '+safeText(r.note)):''}</div>
       </div></div>
       <button class="del-btn" data-del-symptom="${r.id}">✕</button>
     </div>`;
@@ -2029,7 +2056,7 @@ function renderMenstrualHistory(){
     return `<div class="record-item" data-edit-men="${r.id}">
       <div class="left"><div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>${r.type}</b>${detail?('<span style="color:var(--muted);font-size:12px">'+detail+'</span>'):''}</div>
-        <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.note?(' ／ '+r.note):''}</div>
+        <div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.note?(' ／ '+safeText(r.note)):''}</div>
       </div></div>
       <button class="del-btn" data-del-men="${r.id}">✕</button>
     </div>`;
@@ -2095,7 +2122,7 @@ function renderDischargeHistory(){
   el.innerHTML = sorted.map(r => {
     const detail = [r.amount, (r.colorTags||[]).join('・')||r.color, (r.clarityTags||[]).join('・'), (r.stateTags||[]).join('・')||r.state].filter(Boolean).join(' / ');
     return `<div class="record-item">
-      <div class="left"><div><b style="font-size:13px">${detail||'おりもの'}</b><div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs ? ('〜'+fmtTimeStr(r.endTs)) : '〜記録中'}${r.note?(' ／ '+r.note):''}</div></div></div>
+      <div class="left"><div><b style="font-size:13px">${safeText(detail||'おりもの')}</b><div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs ? ('〜'+fmtTimeStr(r.endTs)) : '〜記録中'}${r.note?(' ／ '+safeText(r.note)):''}</div></div></div>
       <button class="del-btn" data-del-dis="${r.id}">✕</button>
     </div>`;
   }).join('');
@@ -2330,7 +2357,7 @@ function renderLifestyleHistory(){
   const today=fmtDateStr(Date.now());const total=appData.lifestyleEvents.filter(r=>r.type==='水分補給'&&fmtDateStr(r.startTs)===today).reduce((a,r)=>a+(Number(r.amountMl)||0),0);const totalEl=document.getElementById('hydrationDailyTotal');if(totalEl)totalEl.textContent='今日：'+total+'ml';
   const holder=document.getElementById('lifestyleHistoryList'), rows=[...appData.lifestyleEvents].sort((a,b)=>b.startTs-a.startTs);
   if(!rows.length){holder.innerHTML='<div class="empty">記録はありません</div>';return;}
-  holder.innerHTML=rows.map(r=>{let d=r.type==='お腹の張り'?'張り '+(r.level??0)+'/10':r.type==='食事'?'食事量：'+(r.mealAmount||'記録なし'):r.type==='排便'?'便：'+(r.bloodObserved?'血液のような見た目あり ／ ':'')+(Array.isArray(r.bowelSelections)&&r.bowelSelections.length?r.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):((r.bowelStates||[]).join('・')||r.bowelState||'記録なし')):r.type==='排尿'?('排尿時間：'+fmtDur(r.durationSec||0)):r.type==='水分補給'?((r.drink||'水')+' '+(r.amountMl||200)+'ml'):r.type==='服薬'?((r.medicationName||'薬')+(r.medicationDose?' '+r.medicationDose:'')):r.type==='入浴'?((r.bathType||'入浴')+(r.durationSec?' '+fmtDur(r.durationSec):'')):r.type==='睡眠'?'睡眠 '+(r.durationSec?fmtDur(r.durationSec):''):'記録';return `<div class="record-item" data-life-id="${r.id}"><div class="left"><div><div>${r.type} ・ ${d}</div><div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.bloodObserved?' ／ 血液のような見た目あり':''}${r.colorTags?.length?' ／ 色：'+r.colorTags.join('・'):(r.color?' ／ <span style=\"display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;background:'+r.color+'\"></span>':'')}${r.photoData?' ／ 📷写真あり':''}${r.note?' ／ '+r.note:''}</div></div></div><button class="del-btn" data-life-del="${r.id}">×</button></div>`;}).join('');
+  holder.innerHTML=rows.map(r=>{let d=r.type==='お腹の張り'?'張り '+(r.level??0)+'/10':r.type==='食事'?'食事量：'+(r.mealAmount||'記録なし'):r.type==='排便'?'便：'+(r.bloodObserved?'血液のような見た目あり ／ ':'')+(Array.isArray(r.bowelSelections)&&r.bowelSelections.length?r.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):((r.bowelStates||[]).join('・')||r.bowelState||'記録なし')):r.type==='排尿'?('排尿時間：'+fmtDur(r.durationSec||0)):r.type==='水分補給'?((r.drink||'水')+' '+(r.amountMl||200)+'ml'):r.type==='服薬'?((r.medicationName||'薬')+(r.medicationDose?' '+r.medicationDose:'')):r.type==='入浴'?((r.bathType||'入浴')+(r.durationSec?' '+fmtDur(r.durationSec):'')):r.type==='睡眠'?'睡眠 '+(r.durationSec?fmtDur(r.durationSec):''):'記録';return `<div class="record-item" data-life-id="${safeText(r.id)}"><div class="left"><div><div>${safeText(r.type)} ・ ${safeText(d)}</div><div class="meta">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.bloodObserved?' ／ 血液のような見た目あり':''}${r.colorTags?.length?' ／ 色：'+safeText(r.colorTags.join('・')):(r.color?' ／ <span style=\"display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;background:'+r.color+'\"></span>':'')}${r.photoData?' ／ 📷写真あり':''}${r.note?' ／ '+safeText(r.note):''}</div></div></div><button class="del-btn" data-life-del="${safeText(r.id)}">×</button></div>`;}).join('');
   holder.querySelectorAll('[data-life-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-life-del]'))return;const id=parseInt(el.dataset.lifeId,10);const r=appData.lifestyleEvents.find(x=>x.id===id);openEditGeneric('lifestyleEvents',id,r?.type||'生活・体調の記録');}));
   holder.querySelectorAll('[data-life-del]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();const id=parseInt(el.dataset.lifeDel,10);if(confirm('この記録を削除しますか？')){appData.lifestyleEvents=appData.lifestyleEvents.filter(x=>x.id!==id);saveData();renderLifestyleHistory();renderTimeline();}}));
 }
@@ -2340,7 +2367,7 @@ function buildTimelineEvents(){
   const items = [];
   appData.painRecords.forEach(r => items.push({
     kind:'pain', startTs:r.startTs, endTs:r.endTs, icon:'🩹', iconBg: colorOf(r.region),
-    title: r.region + ' ・ 痛み ' + r.level, detail: getFaceInfo(r.level).label + (r.note?(' ／ '+r.note):''),
+    title: r.region + ' ・ 痛み ' + r.level, detail: getFaceInfo(r.level).label + (r.note?(' ／ '+safeText(r.note)):''),
     ref: r
   }));
   appData.noPainRecords.forEach(r => items.push({
@@ -2348,15 +2375,15 @@ function buildTimelineEvents(){
     title: (r.region||NO_PAIN_ALL) + ' ・ 痛みなし', detail: r.note||'', ref: r
   }));
   const symptomGroups=new Map();
-  appData.symptomEvents.forEach(r=>{if(r.sessionId){if(!symptomGroups.has(r.sessionId))symptomGroups.set(r.sessionId,[]);symptomGroups.get(r.sessionId).push(r);}else items.push({kind:'symptom',startTs:r.startTs,endTs:r.endTs,icon:'🤒',iconBg:'#92400e',title:r.label,detail:r.kind==='temp'?(r.value+(r.unit||'')):('強さ '+r.value+'/10')+(r.note?(' ／ '+r.note):''),ref:r});});
+  appData.symptomEvents.forEach(r=>{if(r.sessionId){if(!symptomGroups.has(r.sessionId))symptomGroups.set(r.sessionId,[]);symptomGroups.get(r.sessionId).push(r);}else items.push({kind:'symptom',startTs:r.startTs,endTs:r.endTs,icon:'🤒',iconBg:'#92400e',title:r.label,detail:r.kind==='temp'?(r.value+(r.unit||'')):('強さ '+r.value+'/10')+(r.note?(' ／ '+safeText(r.note)):''),ref:r});});
   symptomGroups.forEach(group=>{group.sort((a,b)=>a.startTs-b.startTs);const first=group[0],last=group[group.length-1],vals=group.map(x=>x.value);items.push({kind:'symptom',startTs:first.startTs,endTs:last.endTs,icon:'🤒',iconBg:'#92400e',title:first.label,detail:'強さ '+vals.join(' → ')+'/10'+(first.note?(' ／ '+first.note):''),ref:first});});
   appData.menstrualEvents.forEach(r => items.push({
     kind:'menstrual', startTs:r.startTs, endTs:null, icon:'🩸', iconBg:'#9d174d',
-    title: r.type, detail: [r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / ') + (r.note?(' ／ '+r.note):''), ref: r
+    title: r.type, detail: [r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / ') + (r.note?(' ／ '+safeText(r.note)):''), ref: r
   }));
   appData.dischargeEvents.forEach(r => items.push({
     kind:'discharge', startTs:r.startTs, endTs:null, icon:'💧', iconBg:'#6d28d9',
-    title: 'おりもの', detail: [r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / ') + (r.note?(' ／ '+r.note):''), ref: r
+    title: 'おりもの', detail: [r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / ') + (r.note?(' ／ '+safeText(r.note)):''), ref: r
   }));
   appData.lifestyleEvents.forEach(r=>{
     let detail=r.type==='お腹の張り'?'張り '+(r.level??0)+'/10':r.type==='食事'?'食事量：'+(r.mealAmount||'記録なし'):r.type==='排便'?'便：'+(r.bloodObserved?'血液のような見た目あり ／ ':'')+(Array.isArray(r.bowelSelections)&&r.bowelSelections.length?r.bowelSelections.map(x=>x.shapeLabel+'・'+x.amountLabel).join(' ／ '):((r.bowelStates||[]).join('・')||r.bowelState||'記録なし')):r.type==='排尿'?('排尿時間：'+fmtDur(r.durationSec||0)):r.type==='水分補給'?((r.drink||'水')+' '+(r.amountMl||200)+'ml'):r.type==='服薬'?((r.medicationName||'薬')+(r.medicationDose?' '+r.medicationDose:'')):r.type==='入浴'?((r.bathType||'入浴')+(r.durationSec?' '+fmtDur(r.durationSec):'')):r.type==='睡眠'?'睡眠 '+(r.durationSec?fmtDur(r.durationSec):''):'記録';
@@ -2372,8 +2399,8 @@ function buildTimelineEvents(){
     title: '調子が良かった時間（候補から記録）', detail:'', ref: r
   }));
   // 新しい保存領域は既存データへ混ぜず、表示時だけ統合する。
-  if(typeof getMeasurements==='function')getMeasurements().forEach(r=>items.push({kind:'measure',startTs:r.startTs,endTs:null,icon:'🌡️',iconBg:'#0e7490',title:'身体測定：'+r.type,detail:String(r.value)+' '+(r.unit||'')+(r.note?' ／ '+r.note:''),ref:r}));
-  if(typeof readExtra==='function')readExtra('healthTimelineExerciseHistory_v1').forEach(r=>items.push({kind:'exercise',startTs:r.startTs,endTs:r.endTs,icon:'🏃',iconBg:'#047857',title:r.title||'運動',detail:(r.steps!=null?r.steps+'歩 / ':'')+fmtDur(r.durationSec)+(r.note?' ／ '+r.note:''),ref:r}));
+  if(typeof getMeasurements==='function')getMeasurements().forEach(r=>items.push({kind:'measure',startTs:r.startTs,endTs:null,icon:'🌡️',iconBg:'#0e7490',title:'身体測定：'+r.type,detail:String(r.value)+' '+(r.unit||'')+(r.note?' ／ '+safeText(r.note):''),ref:r}));
+  if(typeof readExtra==='function')readExtra('healthTimelineExerciseHistory_v1').forEach(r=>items.push({kind:'exercise',startTs:r.startTs,endTs:r.endTs,icon:'🏃',iconBg:'#047857',title:r.title||'運動',detail:(r.steps!=null?r.steps+'歩 / ':'')+fmtDur(r.durationSec)+(r.note?' ／ '+safeText(r.note):''),ref:r}));
   if(typeof getBreathing==='function')getBreathing().forEach(r=>items.push({kind:'breath',startTs:r.startTs,endTs:r.endTs,icon:'🌬️',iconBg:'#4f46e5',title:'呼吸ガイド',detail:'実施時間 '+fmtDur(r.durationSec),ref:r}));
   return items.sort((a,b) => b.startTs - a.startTs);
 }
@@ -2477,7 +2504,7 @@ function renderTrend(){
   grid.querySelectorAll('[data-trend-key]').forEach(cell=>cell.addEventListener('click',()=>{
     const rows=byCell.get(cell.dataset.trendKey)||[];
     if(!rows.length){detail.innerHTML='<div class="trend-detail-card">この時間帯の記録はありません。</div>';return;}
-    detail.innerHTML=`<div class="trend-detail-card"><b>${cell.dataset.trendKey.replace('|','　')}</b></div>`+rows.sort((a,b)=>a.startTs-b.startTs).map(it=>`<div class="trend-detail-card">${trendIconForKind(it.kind)} <b>${fmtTimeStr(it.startTs)}　${it.title}</b>${it.detail?`<div style="margin-top:3px;color:var(--muted);">${it.detail}</div>`:''}</div>`).join('');
+    detail.innerHTML=`<div class="trend-detail-card"><b>${cell.dataset.trendKey.replace('|','　')}</b></div>`+rows.sort((a,b)=>a.startTs-b.startTs).map(it=>`<div class="trend-detail-card">${trendIconForKind(it.kind)} <b>${fmtTimeStr(it.startTs)}　${safeText(it.title)}</b>${it.detail?`<div style="margin-top:3px;color:var(--muted);">${safeText(it.detail)}</div>`:''}</div>`).join('');
   }));
 }
 function renderTimeline(){
@@ -2518,18 +2545,18 @@ function renderTimeline(){
       <div class="tl-day-items">`;
 
     group.items.forEach(it => {
-      const timeRange = it.endTs ? (fmtTimeStr(it.startTs)+' 〜 '+fmtTimeStr(it.endTs)) : fmtTimeStr(it.startTs);
-      html += `<details class="timeline-item" data-tl-kind="${it.kind}" data-tl-id="${it.ref.id}">
+      const timeRange = it.endTs != null && it.endTs > it.startTs ? (fmtTimeStr(it.startTs)+' 〜 '+fmtTimeStr(it.endTs)+'（'+fmtDur((it.endTs-it.startTs)/1000)+'）') : fmtTimeStr(it.startTs);
+      html += `<details class="timeline-item" data-tl-kind="${it.kind}" data-tl-id="${safeText(it.ref.id)}">
         <summary>
           <div class="tl-icon" style="background:${it.iconBg}22;border:1px solid ${it.iconBg}">${it.icon}</div>
           <div class="tl-summary-main">
-            <div class="tl-summary-title">${it.title}</div>
+            <div class="tl-summary-title">${safeText(it.title)}</div>
             <div class="tl-summary-time">${timeRange}</div>
           </div>
         </summary>
         <div class="tl-detail-wrap">
-          ${it.detail ? `<div class="tl-detail">${it.detail}</div>` : '<div class="tl-detail">詳細はありません</div>'}
-          <button type="button" class="ghost-btn tl-edit-btn" data-tl-edit-kind="${it.kind}" data-tl-edit-id="${it.ref.id}">この記録を編集</button>
+          ${it.detail ? `<div class="tl-detail">${safeText(it.detail)}</div>` : '<div class="tl-detail">詳細はありません</div>'}
+          <button type="button" class="ghost-btn tl-edit-btn" data-tl-edit-kind="${it.kind}" data-tl-edit-id="${safeText(it.ref.id)}">この記録を編集</button>
         </div>
       </details>`;
     });
@@ -2645,7 +2672,7 @@ function openEditGeneric(arrKey,id,title){
   if(arrKey==='lifestyleEvents'){
     document.getElementById('editTitle').textContent=title+'を編集';
     const bs=Array.isArray(r.bowelStates)?r.bowelStates:(r.bowelState?String(r.bowelState).split('・').filter(Boolean):[]);
-    document.getElementById('editFields').innerHTML=`<div class="field"><label>種類</label><select id="ef_lifeType">${['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り',...(r.type&&!['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り'].includes(r.type)?[r.type]:[])].map(v=>`<option value="${v}" ${r.type===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field-row" id="ef_urineEndRow"><div class="field"><label>終了日</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_etime" step="1" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div><div class="field" id="ef_lifeLevelWrap" style="display:${r.type==='お腹の張り'?'':'none'}"><label>お腹の張り（0〜10）</label><input type="range" class="pain-slider" id="ef_lifeLevel" min="0" max="10" value="${r.level??0}"><div id="ef_lifeLevelLabel" style="text-align:center;font-weight:700">${r.level??0}/10</div></div><div class="field" id="ef_lifeMealWrap"><label>食事量</label><select id="ef_lifeMeal">${mealAmountLabels.map(v=>`<option ${r.mealAmount===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field" id="ef_lifeMedicationWrap"><label>薬の名前</label><input id="ef_lifeMedicationName" value="${r.medicationName||''}"><label>服用量</label><input id="ef_lifeMedicationDose" value="${r.medicationDose||''}"></div><div class="field" id="ef_lifeWaterWrap"><label>飲み物・量</label><select id="ef_lifeDrink"><option>水</option><option>お茶</option><option>コーヒー</option><option>その他</option></select><input type="number" id="ef_lifeWater" min="0" max="5000" value="${r.amountMl??200}"> ml</div><div class="field" id="ef_lifeBowelWrap"><label>便の見た目（複数選択可）</label><div class="bowel-matrix-wrap"><div class="bowel-grid" id="efLifeBowelMatrix"></div><div class="bowel-matrix-value" id="efLifeBowelValue">必要な組み合わせを選択してください</div></div><div class="bleeding-matrix-hint">形が変わった場合は、当てはまるものを複数選択できます。⑥は泥状、⑦は水のような便です。</div><div class="chip-select multi-select" id="efLifeBowelColors"></div><label><input type="checkbox" id="efLifeBowelBlood"> 血液が混じっている／血液のように見える</label></div><div class="field"><label>内容・気づいたこと</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
+    document.getElementById('editFields').innerHTML=`<div class="field"><label>種類</label><select id="ef_lifeType">${['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り',...(r.type&&!['排尿','排便','食事','水分補給','睡眠','服薬','入浴','お腹の張り'].includes(r.type)?[r.type]:[])].map(v=>`<option value="${safeText(v)}" ${r.type===v?'selected':''}>${safeText(v)}</option>`).join('')}</select></div><div class="field-row"><div class="field"><label>開始日</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>開始時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field-row" id="ef_urineEndRow"><div class="field"><label>終了日</label><input type="date" id="ef_edate" value="${r.endTs!=null?fmtDateStr(r.endTs):''}"></div><div class="field"><label>終了時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_etime" step="1" value="${r.endTs!=null?timeWithSeconds(r.endTs):''}"></div></div><div class="field" id="ef_lifeLevelWrap" style="display:${r.type==='お腹の張り'?'':'none'}"><label>お腹の張り（0〜10）</label><input type="range" class="pain-slider" id="ef_lifeLevel" min="0" max="10" value="${Number(r.level)||0}"><div id="ef_lifeLevelLabel" style="text-align:center;font-weight:700">${Number(r.level)||0}/10</div></div><div class="field" id="ef_lifeMealWrap"><label>食事量</label><select id="ef_lifeMeal">${mealAmountLabels.map(v=>`<option ${r.mealAmount===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field" id="ef_lifeMedicationWrap"><label>薬の名前</label><input id="ef_lifeMedicationName" value="${safeText(r.medicationName||'')}"><label>服用量</label><input id="ef_lifeMedicationDose" value="${safeText(r.medicationDose||'')}"></div><div class="field" id="ef_lifeWaterWrap"><label>飲み物・量</label><select id="ef_lifeDrink"><option>水</option><option>お茶</option><option>コーヒー</option><option>その他</option></select><input type="number" id="ef_lifeWater" min="0" max="5000" value="${Number(r.amountMl??200)||0}"> ml</div><div class="field" id="ef_lifeBowelWrap"><label>便の見た目（複数選択可）</label><div class="bowel-matrix-wrap"><div class="bowel-grid" id="efLifeBowelMatrix"></div><div class="bowel-matrix-value" id="efLifeBowelValue">必要な組み合わせを選択してください</div></div><div class="bleeding-matrix-hint">形が変わった場合は、当てはまるものを複数選択できます。⑥は泥状、⑦は水のような便です。</div><div class="chip-select multi-select" id="efLifeBowelColors"></div><label><input type="checkbox" id="efLifeBowelBlood"> 血液が混じっている／血液のように見える</label></div><div class="field"><label>内容・気づいたこと</label><textarea id="ef_note">${safeText(r.note||'')}</textarea></div>`;
     editBackdrop.classList.add('open');
     const sync=()=>{const t=document.getElementById('ef_lifeType').value;document.getElementById('ef_lifeLevelWrap').style.display=t==='お腹の張り'?'':'none';document.getElementById('ef_lifeMealWrap').style.display=t==='食事'?'':'none';document.getElementById('ef_lifeBowelWrap').style.display=t==='排便'?'':'none';document.getElementById('ef_lifeMedicationWrap').style.display=t==='服薬'?'':'none';document.getElementById('ef_lifeWaterWrap').style.display=t==='水分補給'?'':'none';document.getElementById('ef_urineEndRow').style.display=t==='排尿'?'':'none';};
     sync();
@@ -2684,7 +2711,7 @@ function openEditGeneric(arrKey,id,title){
         <div class="field"><label>質（複数選択可）</label><div class="chip-select multi-select" id="ef_mtexture">${BLEED_TEXTURE_TAGS.map(v=>`<div class="c ${existingTextures.includes(v)?'active':''}" data-v="${v}">${v}</div>`).join('')}</div></div>
       </div>
       <div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div>
-      <div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
+      <div class="field"><label>補足</label><textarea id="ef_note">${safeText(r.note||'')}</textarea></div>`;
     let editMen={x:ax.x,color:r.color||null,textures:[...existingTextures],none:!!r.bleedingNone};
     const cells=document.getElementById('efBleedingCells');
     const editNone=!!r.bleedingNone;
@@ -2707,7 +2734,7 @@ function openEditGeneric(arrKey,id,title){
     return;
   }
   document.getElementById('editTitle').textContent=title+'を編集';
-  document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${r.note||''}</textarea></div>`;
+  document.getElementById('editFields').innerHTML=`<div class="field-row"><div class="field"><label>日付</label><input type="date" id="ef_sdate" value="${fmtDateStr(r.startTs)}"></div><div class="field"><label>時刻</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}" id="ef_stime" step="1" value="${timeWithSeconds(r.startTs)}"></div></div><div class="field"><label>補足</label><textarea id="ef_note">${safeText(r.note||'')}</textarea></div>`;
   editBackdrop.classList.add('open');
   document.getElementById('editSave').onclick=()=>{r.startTs=editedTimestamp('ef_sdate','ef_stime',r.startTs);r.note=document.getElementById('ef_note').value.trim();saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
   document.getElementById('editDelete').onclick=()=>{if(!confirm('この記録を削除しますか？'))return;appData[arrKey]=appData[arrKey].filter(x=>x.id!==id);saveData();closeEdit();renderTimeline();renderMenstrualHistory();renderDischargeHistory();renderMenstrualChart();};
@@ -2794,7 +2821,7 @@ function renderChart(){
   const visible=records.filter(r=>(r.endTs||r.startTs)>=range.start&&r.startTs<=range.end);
   drawSegmentChart(document.getElementById('painChart'),visible,false,range.start,range.end,range.days);
   const byRegion={};visible.forEach(r=>(byRegion[r.region]=byRegion[r.region]||[]).push(r));
-  legendEl.innerHTML=Object.keys(byRegion).map(region=>`<div class="legend-item"><span class="dot" style="background:${colorOf(region)}"></span>${region}</div>`).join('');
+  legendEl.innerHTML=Object.keys(byRegion).map(region=>`<div class="legend-item"><span class="dot" style="background:${colorOf(region)}"></span>${safeText(region)}</div>`).join('');
   if(noteEl){const ss=new Date(range.start),ee=new Date(range.end);noteEl.textContent=`表示：${fmtDateStr(ss.getTime())} 〜 ${fmtDateStr(ee.getTime())}　｜　空白＝記録なし`;}
 }
 
@@ -2849,7 +2876,7 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
     const latest = list[0];
     const faceMax = getFaceInfo(maxVal), faceLatest = getFaceInfo(latest.level);
     return `<tr>
-      <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;">${reg}</td>
+      <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;">${safeText(reg)}</td>
       <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center;">${list.length} 件</td>
       <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center;">${fmtDur(totalSec)}</td>
       <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center;"><span style="color:${faceMax.color};font-weight:bold;">${maxVal}</span> (${faceMax.label})</td>
@@ -2859,20 +2886,20 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
 
   let noPainRows = [...appData.noPainRecords].filter(insideReport).sort((a,b)=>b.startTs-a.startTs).map(r => `<tr>
     <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs?(' 〜 '+fmtTimeStr(r.endTs)):''}</td>
-    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${r.region||NO_PAIN_ALL}${r.note?(' ／ '+r.note):''}</td>
+    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${safeText(r.region||NO_PAIN_ALL)}${r.note?(' ／ '+safeText(r.note)):''}</td>
   </tr>`).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">記録はありません</td></tr>';
 
   let symRows = [...appData.symptomEvents].filter(insideReport).sort((a,b)=>b.startTs-a.startTs).map(r => `<tr>
     <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;white-space:nowrap;">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}${r.endTs?(' 〜 '+fmtTimeStr(r.endTs)):''}</td>
-    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${r.label}: <b>${r.kind==='temp'?(r.value+(r.unit||'')):r.value}</b>${r.note?(' ／ '+r.note):''}</td>
+    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${safeText(r.label)}: <b>${safeText(r.kind==='temp'?(r.value+(r.unit||'')):r.value)}</b>${r.note?(' ／ '+safeText(r.note)):''}</td>
   </tr>`).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">全身症状の記録はありません</td></tr>';
 
   let menRows = [...appData.menstrualEvents].filter(insideReport).sort((a,b)=>b.startTs-a.startTs).map(r => `<tr>
     <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;white-space:nowrap;">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}</td>
-    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${r.type} ${[r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / ')}${r.note?(' ／ '+r.note):''}</td>
+    <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${safeText(r.type)} ${safeText([r.amount,r.color,(r.textureTags||[]).length?r.textureTags.join('・'):r.state].filter(Boolean).join(' / '))}${r.note?(' ／ '+safeText(r.note)):''}</td>
   </tr>`).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">生理・出血の記録はありません</td></tr>';
 
-  let lifestyleRows = [...appData.lifestyleEvents].filter(insideReport).sort((a,b)=>b.startTs-a.startTs).map(r=>{const detail=r.type==='お腹の張り'?'張り '+(r.level??0)+'/10':r.type==='食事'?'食事量：'+(r.mealAmount||'記録なし'):r.type==='排便'?'便：'+((r.bowelStates||[]).join('・')||r.bowelState||'記録なし'):r.type==='排尿'?('排尿時間：'+fmtDur(r.durationSec||0)):r.type==='水分補給'?((r.drink||'水')+' '+(r.amountMl||200)+'ml'):r.type==='服薬'?((r.medicationName||'薬')+(r.medicationDose?' '+r.medicationDose:'')):r.type==='入浴'?((r.bathType||'入浴')+(r.durationSec?' '+fmtDur(r.durationSec):'')):r.type==='睡眠'?'睡眠 '+(r.durationSec?fmtDur(r.durationSec):''):'記録';return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;white-space:nowrap;">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${r.type}：${detail}${r.note?(' ／ '+r.note):''}</td></tr>`;}).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">記録はありません</td></tr>';
+  let lifestyleRows = [...appData.lifestyleEvents].filter(insideReport).sort((a,b)=>b.startTs-a.startTs).map(r=>{const detail=r.type==='お腹の張り'?'張り '+(r.level??0)+'/10':r.type==='食事'?'食事量：'+(r.mealAmount||'記録なし'):r.type==='排便'?'便：'+((r.bowelStates||[]).join('・')||r.bowelState||'記録なし'):r.type==='排尿'?('排尿時間：'+fmtDur(r.durationSec||0)):r.type==='水分補給'?((r.drink||'水')+' '+(r.amountMl||200)+'ml'):r.type==='服薬'?((r.medicationName||'薬')+(r.medicationDose?' '+r.medicationDose:'')):r.type==='入浴'?((r.bathType||'入浴')+(r.durationSec?' '+fmtDur(r.durationSec):'')):r.type==='睡眠'?'睡眠 '+(r.durationSec?fmtDur(r.durationSec):''):'記録';return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;white-space:nowrap;">${fmtDateStr(r.startTs)} ${fmtTimeStr(r.startTs)}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:13px;">${safeText(r.type)}：${safeText(detail)}${r.note?(' ／ '+safeText(r.note)):''}</td></tr>`;}).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">記録はありません</td></tr>';
 
   let sleepWellRows = [...appData.sleepEvents.filter(insideReport).map(r=>({...r,kind:'睡眠'})), ...appData.wellnessEvents.filter(insideReport).map(r=>({...r,kind:'調子良好'}))]
     .sort((a,b)=>b.startTs-a.startTs).map(r => `<tr>
@@ -2883,21 +2910,21 @@ document.getElementById('doctorViewBtn').addEventListener('click', () => {
   const timelineItems = buildTimelineEvents();
   let timelineRows = timelineItems.map(it => `<tr>
     <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:11.5px;white-space:nowrap;">${fmtDateStr(it.startTs)} ${fmtTimeStr(it.startTs)}${it.endTs?(' 〜 '+fmtTimeStr(it.endTs)):''}</td>
-    <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:12.5px;">${it.icon} ${it.title}${it.detail?(' — '+it.detail):''}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:12.5px;">${safeText(it.icon)} ${safeText(it.title)}${it.detail?(' — '+safeText(it.detail)):''}</td>
   </tr>`).join('') || '<tr><td colspan="2" style="padding:12px;text-align:center;color:#64748b;">記録はありません</td></tr>';
 
-  const chartDataJson = JSON.stringify(appData.painRecords.filter(insideReport));
-  const bleedingDataJson = JSON.stringify(appData.menstrualEvents.filter(r=>r.type==='出血'&&insideReport(r)));
-  const urineDataJson = JSON.stringify(appData.lifestyleEvents.filter(r=>r.type==='排尿'&&insideReport(r)));
+  const chartDataJson = safeJsonScript(appData.painRecords.filter(insideReport));
+  const bleedingDataJson = safeJsonScript(appData.menstrualEvents.filter(r=>r.type==='出血'&&insideReport(r)));
+  const urineDataJson = safeJsonScript(appData.lifestyleEvents.filter(r=>r.type==='排尿'&&insideReport(r)));
   const regionColorMap = {}; REGIONS.forEach(r => regionColorMap[r.key] = r.color);
-  const regionColorJson = JSON.stringify(regionColorMap);
+  const regionColorJson = safeJsonScript(regionColorMap);
 
 
   // ---- 要約と全記録の時間軸（記録がある点だけを表示。空白＝記録なし） ----
   const _all = buildTimelineEvents();
   let _end=reportEnd, _start=reportStart;
   const _items = _all.filter(x=>x.startTs>=_start&&x.startTs<=_end).sort((a,b)=>a.startTs-b.startTs);
-  const _chartEventsJson = JSON.stringify(_items.map(x=>({kind:x.kind,title:x.title,ts:Number(x.startTs),ref:x.ref||{},detail:x.detail||''})));
+  const _chartEventsJson = safeJsonScript(_items.map(x=>({kind:x.kind,title:x.title,ts:Number(x.startTs),ref:x.ref||{},detail:x.detail||''})));
   const _laneName = x=> x.kind==='pain'?'痛み':(x.kind==='nopain'?'痛みなし（明記）':x.title);
   const _lanes = {}; _items.forEach(x=>{ const n=_laneName(x); (_lanes[n]=_lanes[n]||{items:[],icon:x.icon,kind:x.kind}).items.push(x); });
   const _laneNames = Object.keys(_lanes);
@@ -3187,7 +3214,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const a = document.createElement('a');
   const now = new Date();
   a.href = url;
-  a.download = `症状データ_書き出し_${fmtDateStr(now.getTime()).replace(/-/g,'')}_${fmtTimeStr(now.getTime()).replace(':','')}.csv`;
+  a.download = `症状データ_書き出し_${fmtDateStr(now.getTime()).replace(/-/g,'')}_${fmtTimeStr(now.getTime()).replace(/:/g,'')}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
@@ -3522,14 +3549,14 @@ function openMeasurePanel(type){
   label.textContent=type==='血圧'?'最高血圧（mmHg）':type==='その他'?'数値':type+'（'+(measureUnits[type]||'')+'）';
   document.getElementById('measureBpField').hidden=type!=='血圧';
   document.getElementById('measureUnitField').hidden=type!=='その他';
-  document.getElementById('measureValue').value='';
-  document.getElementById('measureBpLow').value='';
+  document.getElementById('measureValue').value=typeof safeMeasureInitialValue==='function'?safeMeasureInitialValue(selected):'';
+  document.getElementById('measureBpLow').value=typeof safeMeasureInitialValue==='function'?safeMeasureInitialValue('最低血圧'):'';
   document.getElementById('measureUnit').value='';
   document.getElementById('measureNote').value='';
   document.getElementById('measureDate').value=fmtDateStr(Date.now());
   document.getElementById('measureTime').value=timeWithSeconds(Date.now());
   measureBackdrop.classList.add('open');
-  document.getElementById('measureValue').focus({preventScroll:true});
+  // iPhoneでのキーボード自動起動を防ぎ、日時欄を隠さない
 }
 function closeMeasurePanel(){measureBackdrop.classList.remove('open');}
 document.querySelectorAll('[data-measure]').forEach(b=>b.addEventListener('click',()=>openMeasurePanel(b.dataset.measure)));
@@ -3642,11 +3669,79 @@ const QUICK_SESSIONS_KEY='healthTimelineQuickSessions_v1';
 const MEASURE_DEFS_KEY='healthTimelineMeasureDefinitions_v1';
 const EXERCISE_DEFS_KEY='healthTimelineExerciseDefinitions_v1';
 const EXERCISE_LOG_KEY='healthTimelineExerciseHistory_v1';
-const BACKUP_KEYS=[STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY];
-function backupJSON(){const data={format:'health-timeline-backup',version:1,exportedAt:new Date().toISOString(),storage:{}};for(const k of BACKUP_KEYS)data.storage[k]=localStorage.getItem(k);const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='health-timeline-backup-'+fmtDateStr(Date.now())+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+const SAFE_MEASURE_DEFAULTS_KEY='healthTimelineMeasureDefaults_v1';
+const SAFE_VOICE_DEFS_KEY='healthTimelineVoiceGuideDefinitions_v1';
+const SAFE_BACKUP_META_KEY='healthTimelineBackupMeta_v1';
+const BACKUP_KEYS=[SAFE_MEASURE_DEFAULTS_KEY,SAFE_VOICE_DEFS_KEY,STORAGE_KEY_V4,ACTIVE_PAIN_STORAGE_KEY,MEASURE_KEY,BREATH_KEY,SYMPTOM_CONFIG_KEY,TAB_ORDER_KEY,DRINK_PRESET_KEY,MEDICINE_PRESET_KEY,QUICK_SESSIONS_KEY,MEASURE_DEFS_KEY,EXERCISE_DEFS_KEY,EXERCISE_LOG_KEY,REGION_DEFS_KEY];
+function safeExportObject(){
+  const storage={};for(const k of BACKUP_KEYS)storage[k]=localStorage.getItem(k);
+  const core=JSON.parse(storage[STORAGE_KEY_V4]||'null');
+  if(!core||!Array.isArray(core.painRecords)||!Array.isArray(core.symptomEvents))throw Error('健康記録を読み取れません。バックアップは作成しませんでした。');
+  const counts={};for(const [key,value] of Object.entries(core))if(Array.isArray(value))counts[key]=value.length;
+  return {format:'health-timeline-backup',version:2,exportedAt:new Date().toISOString(),source:'device-local',counts,storage};
+}
+function safeDownloadJson(obj,tag='health-timeline-backup'){
+  const json=JSON.stringify(obj,null,2),blob=new Blob([json],{type:'application/json'});
+  const a=document.createElement('a'),url=URL.createObjectURL(blob);
+  a.href=url;a.download=tag+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  return json;
+}
+function backupJSON(){
+  try{
+    const data=safeExportObject();
+    const json=safeDownloadJson(data);
+    const checked=JSON.parse(json);
+    if(checked.format!==data.format||!checked.storage[STORAGE_KEY_V4])throw Error('ファイル生成の検証に失敗しました');
+    const status=document.getElementById('safeBackupStatus');
+    if(status)status.textContent='バックアップのダウンロードを開始しました（'+Object.values(data.counts).reduce((n,v)=>n+v,0)+'件）。iPhoneの「ファイル」等に保存されていることを必ず確認してください。';
+    // ダウンロード開始とファイル保存完了は異なる。成功日時は自動記録しない。
+  }catch(err){alert('バックアップを開始できませんでした：'+err.message);}
+}
+function safeValidateBackup(value){
+  if(!value||value.format!=='health-timeline-backup'||![1,2].includes(value.version)||!value.storage||typeof value.storage!=='object'||Array.isArray(value.storage))throw Error('対応する健康記録のJSONではありません');
+  const names=Object.keys(value.storage);
+  if(names.some(k=>!BACKUP_KEYS.includes(k)))throw Error('この版で扱えない保存項目があります。元のバックアップは変更せず保管してください');
+  for(const [k,v] of Object.entries(value.storage)){
+    if(v!==null&&typeof v!=='string')throw Error('保存項目 '+k+' の形式が違います');
+    if(v!==null)JSON.parse(v);
+  }
+  if(!value.storage[STORAGE_KEY_V4])throw Error('主要な健康記録がありません');
+  const core=JSON.parse(value.storage[STORAGE_KEY_V4]);
+  if(!core||!Array.isArray(core.painRecords)||!Array.isArray(core.symptomEvents))throw Error('主要な健康記録の配列が読み取れません');
+  for(const [k,v] of Object.entries(core))if(/Records$|Events$/.test(k)&&!Array.isArray(v))throw Error('記録項目の構造が正しくありません：'+k);
+  return {count:Object.values(core).filter(Array.isArray).reduce((n,rows)=>n+rows.length,0),keys:names.length};
+}
 document.getElementById('exportJsonBtn').onclick=backupJSON;
 document.getElementById('importJsonBtn').onclick=()=>document.getElementById('importJsonFile').click();
-document.getElementById('importJsonFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const backup=JSON.parse(await file.text());if(backup.format!=='health-timeline-backup'||!backup.storage||typeof backup.storage!=='object')throw Error('バックアップ形式が正しくありません');const names=Object.keys(backup.storage);if(names.some(k=>!BACKUP_KEYS.includes(k)))throw Error('不明な保存キーが含まれます');for(const [k,value] of Object.entries(backup.storage)){if(value!==null && typeof value!=='string')throw Error('データ形式が正しくありません');if(value!=null)JSON.parse(value);}if(!backup.storage[STORAGE_KEY_V4])throw Error('主要な記録データがありません');const rec=JSON.parse(backup.storage[STORAGE_KEY_V4]);if(!rec||!Array.isArray(rec.painRecords)||!Array.isArray(rec.symptomEvents))throw Error('記録構造が正しくありません');if(!confirm('現在の記録をバックアップの内容で置き換えます。現在のJSONバックアップを別途保存済みですか？'))return;for(const [k,v] of Object.entries(backup.storage)){if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}alert('復元しました。画面を再読み込みします。');location.reload();}catch(err){alert('復元できません：'+err.message);}finally{e.target.value='';}};
+document.getElementById('importJsonFile').onchange=async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+    if(file.size>30*1024*1024)throw Error('ファイルが大きすぎます（上限30MB）。元のファイルは保管してください');
+    const backup=JSON.parse(await file.text());
+    const stats=safeValidateBackup(backup);
+    const current=safeExportObject();
+    const currentCount=Object.values(current.counts).reduce((n,v)=>n+v,0);
+    const ok=confirm('復元するファイル：'+(backup.exportedAt||'日時不明')+'\n記録：約'+stats.count+'件／保存項目：'+stats.keys+'種類\n現在：約'+currentCount+'件\n\n「キャンセル」なら現行記録は一切変更されません。置き換える場合は次へ進みますか？');
+    if(!ok)return;
+    safeDownloadJson(current,'health-timeline-before-restore');
+    if(!confirm('【最終確認】現行データの退避JSONをダウンロード開始しました。ファイルが実際に保存されたことを確認しましたか？\n\n「OK」を押すとバックアップの内容で置き換えます。'))return;
+    // 全キーの現在値をメモリに退避。新データの書き込み失敗時は元に戻す。
+    const snapshot={};for(const k of BACKUP_KEYS)snapshot[k]=localStorage.getItem(k);
+    try{
+      // v1には新しい保存キーが存在しない。欠けたキーは消さず保持し、明示されたキーのみ復元。
+      for(const [k,v] of Object.entries(backup.storage)){
+        if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);
+      }
+      for(const [k,v] of Object.entries(backup.storage))if(localStorage.getItem(k)!==v)throw Error('保存後の照合に失敗しました：'+k);
+    }catch(fail){
+      let rollbackFailed=false;
+      for(const [k,v] of Object.entries(snapshot))try{if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(_){rollbackFailed=true;}
+      throw Error('復元処理に失敗しました。'+(rollbackFailed?'元の状態への復帰にも失敗しました。退避JSONと旧アプリを保持し、操作を中止してください。':'元の記録に戻しました。')+' 原因：'+fail.message);
+    }
+    alert('復元が完了しました。画面を再読み込みします。');location.reload();
+  }catch(err){alert('復元できませんでした：'+err.message);}finally{e.target.value='';}
+};
 
 /* ===== vNext: 先に開始・後から詳細 / 設定で項目管理 ===== */
 const captureBox=document.getElementById('captureBackdrop');
@@ -3742,7 +3837,13 @@ function captureForm(s){const kind=s.kind;let block=kind==='unknown'?`<div class
   }).join('');
   block+=partOptions(s.region)+`<div class="field"><label>痛みの強さ（0〜10、未設定可）</label><div class="capture-faces">${faceButtons}</div><input id="captureLevel" type="range" min="0" max="10" step="1" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div><div class="hint">顔をタップ、またはスライダーから指を離すと、同じ強さの変化履歴に記録します。</div></div>`;
  }
- if(kind==='symptom')block+=`<div class="field"><label>症状の種類</label><select id="captureSymptom"><option value="">未設定</option>${symptomCatalog.filter(x=>!x.hidden).map(x=>`<option value="${safeText(x.key)}" ${s.symptomKey===x.key?'selected':''}>${safeText(x.label)}</option>`).join('')}</select></div><div class="field"><label>強さ（0〜10、未設定可）</label><input id="captureLevel" type="range" min="0" max="10" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div></div>`;
+ if(kind==='symptom'){
+  const faceButtons=[0,2,4,6,8,10].map(v=>{
+    const f=getFaceInfo(v);
+    return `<button type="button" class="capture-face-btn ${s.level===v?'selected':''}" data-capture-face="${v}" aria-label="症状の強さ ${v}、${safeText(f.label)}" aria-pressed="${s.level===v}"><svg viewBox="0 0 24 24" aria-hidden="true">${f.svg}</svg><span>${v}</span></button>`;
+  }).join('');
+  block+=`<div class="field"><label>症状の種類</label><select id="captureSymptom"><option value="">未設定</option>${symptomCatalog.filter(x=>!x.hidden).map(x=>`<option value="${safeText(x.key)}" ${s.symptomKey===x.key?'selected':''}>${safeText(x.label)}</option>`).join('')}</select></div><div class="field"><label>症状の強さ（0〜10、未設定可）</label><div class="capture-faces">${faceButtons}</div><input id="captureLevel" type="range" min="0" max="10" step="1" value="${s.level??0}"><div id="captureLevelValue">${s.level==null?'未設定':s.level+'/10'}</div><div class="hint">顔をタップ、またはスライダーから指を離すと、強さと時刻を同じ記録に保存します。</div></div>`;
+ }
  if(kind==='exercise')block+=`<div class="field"><label>運動メニュー</label><select id="captureExercise"><option value="">運動を選んでください</option>${exerciseDefinitions().filter(x=>!x.hidden||x.id===s.exerciseId).map(x=>`<option value="${safeText(x.id)}" ${s.exerciseId===x.id?'selected':''}>${safeText(x.name)}</option>`).join('')}</select></div>`;
  if(kind==='bath')block+=`<div class="field"><label>入浴方法</label><select id="captureBath"><option value="湯船" ${s.bathType==='湯船'?'selected':''}>湯船</option><option value="シャワー" ${s.bathType==='シャワー'?'selected':''}>シャワー</option></select></div>`;
  if(kind==='walk')block+=`<div class="field"><label>歩数（終了後でも入力可能）</label><input id="captureSteps" type="number" min="0" max="1000000" step="1" value="${s.steps??''}" inputmode="numeric" placeholder="例：2500"></div>`;
@@ -3752,14 +3853,14 @@ function captureForm(s){const kind=s.kind;let block=kind==='unknown'?`<div class
  }
  block+=`<div class="field"><label>メモ（任意）</label><textarea id="captureNote" placeholder="後から入力できます">${safeText(s.note)}</textarea></div>
  <div class="field-row"><div class="field"><label>開始日</label><input type="date" id="captureStartDate" value="${fmtDateStr(s.startTs)}"></div><div class="field"><label>開始時刻（秒まで編集）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="captureStartTime" value="${timeWithSeconds(s.startTs)}"></div></div>
- ${s.endTs!=null?`<div class="field-row"><div class="field"><label>終了日</label><input type="date" id="captureEndDate" value="${fmtDateStr(s.endTs)}"></div><div class="field"><label>終了時刻（秒まで編集）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="captureEndTime" value="${timeWithSeconds(s.endTs)}"></div></div>`:''}<div class="hint">時刻は HH:MM:SS（例 14:32:07）で入力してください。変更は保存時に反映します。</div>`;
+ ${s.endTs!=null?`<div class="field-row"><div class="field"><label>終了日</label><input type="date" id="captureEndDate" value="${fmtDateStr(s.endTs)}"></div><div class="field"><label>終了時刻（秒まで編集）</label><input type="text" inputmode="numeric" maxlength="8" placeholder="HH:MM:SS" id="captureEndTime" value="${timeWithSeconds(s.endTs)}"></div></div>`:''}<div class="hint">時・分・秒をプルダウンで選択してください。変更は保存時に反映します。</div>`;
  return block;}
 function openCapture(id){const s=readQuick().find(x=>x.id===id);if(!s)return;editingCaptureId=id;captureBox.classList.add('open');document.getElementById('captureTitle').textContent=quickLabel(s)+(s.endTs?'の詳細入力':'の記録中');document.getElementById('captureFields').innerHTML=captureForm(s); document.getElementById('captureSaveDetails').textContent=s.endTs?'詳細を保存して記録を確定':'詳細を保存する（記録は継続）';
  document.querySelectorAll('[data-capture-kind]').forEach(btn=>btn.onclick=()=>{if(captureDetails())changeQuickKind(id,btn.dataset.captureKind);});
  // メモは記録中に編集中のまま画面が切り替わっても失われないよう、自動的に仮保存する。
  document.getElementById('captureNote')?.addEventListener('input',e=>{const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.note=e.target.value;storeQuick(rows);}});
  const r=document.getElementById('captureRegion');if(r){r.onchange=()=>renderPartOptions();renderPartOptions(s.detail||'');}
- const ex=document.getElementById('captureExercise');if(ex)ex.onchange=()=>{if(!captureDetails())return;const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.exerciseId=ex.value||null;row.title=exerciseDefinitions().find(x=>x.id===row.exerciseId)?.name||null;if(storeQuick(rows)){drawQuick();openCapture(id);}}};
+ const ex=document.getElementById('captureExercise');if(ex)ex.onchange=()=>{if(!captureDetails())return;const rows=readQuick(),row=rows.find(x=>x.id===id);if(row){row.exerciseId=ex.value||null;row.title=exerciseDefinitions().find(x=>x.id===row.exerciseId)?.name||null;if(storeQuick(rows)){drawQuick();openCapture(id);if(row.kind==='exercise')guideStartForQuick(id);}}};
  const sl=document.getElementById('captureLevel');if(sl){
   const syncFaces=()=>{
     document.querySelectorAll('[data-capture-face]').forEach(b=>{
@@ -3826,7 +3927,7 @@ function stopQuick(id){if(editingCaptureId===id && captureBox.classList.contains
   if(!saved){targets.splice(targets.length-created.length,created.length);appData.nextId=previousNextId;}
  }
  else if(['urine','sleep','bath'].includes(s.kind)){appData.lifestyleEvents.push({id:appData.nextId++,type:({urine:'排尿',sleep:'睡眠',bath:'入浴'}[s.kind]),bathType:s.kind==='bath'?(s.bathType||'湯船'):undefined,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),color:'#e9c33a',recordedAt:end,entryType:'manual',note:s.note||''});saved=saveData();}
- else if(s.kind==='walk'||(s.kind==='exercise'&&s.exerciseId)){const log=readExtra(EXERCISE_LOG_KEY);log.push({id:'E'+end+'_'+Math.random().toString(36).slice(2,6),title:quickLabel(s),kind:s.kind,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),steps:s.steps??null,repsDone:s.repsDone||0,note:s.note||''});saved=writeExtra(EXERCISE_LOG_KEY,log);}
+ else if(s.kind==='walk'||(s.kind==='exercise'&&(s.exerciseId||s.voiceMenuId))){const log=readExtra(EXERCISE_LOG_KEY);log.push({id:'E'+end+'_'+Math.random().toString(36).slice(2,6),title:quickLabel(s),kind:s.kind,startTs:s.startTs,endTs:s.endTs,durationSec:Math.max(0,Math.round((s.endTs-s.startTs)/1000)),steps:s.steps??null,repsDone:s.repsDone||0,voiceMenuId:s.voiceMenuId||null,note:s.note||''});saved=writeExtra(EXERCISE_LOG_KEY,log);}
  if(!saved){s.status='incomplete';if(storeQuick(rows)){captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();alert('終了時刻を保存しました。詳細未設定の記録として残しています。あとから完成できます。');}return;}
  if(!storeQuick(rows.filter(x=>x.id!==id))){alert('履歴の保存は完了しましたが計測状態の整理に失敗しました。バックアップ後に再度画面を開いてください。');return;}
  captureBox.classList.remove('open');editingCaptureId=null;drawQuick();renderIncomplete();refreshCaptureViews();
@@ -3845,11 +3946,11 @@ document.getElementById('captureStop').onclick=()=>{if(editingCaptureId)stopQuic
 function measureDefinitions(){return readExtra(MEASURE_DEFS_KEY);}
 function renderMeasureDefinitions(){const defs=measureDefinitions(),host=document.getElementById('measureDefList');host.innerHTML=defs.map(x=>`<div class="manage-row"><span>${safeText(x.name)}（${safeText(x.unit||'単位なし')}）</span><button type="button" data-meas-rename="${safeText(x.id)}">編集</button><button type="button" data-meas-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-meas-rename]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measRename);if(!r)return;const name=prompt('測定名',r.name);if(!name?.trim())return;const unit=prompt('単位',r.unit||'');if(unit===null)return;r.name=name.trim();r.unit=unit.trim();if(writeExtra(MEASURE_DEFS_KEY,rows))renderMeasureDefinitions();renderMeasureButtons();});host.querySelectorAll('[data-meas-toggle]').forEach(b=>b.onclick=()=>{const rows=measureDefinitions(),r=rows.find(x=>x.id===b.dataset.measToggle);if(r){r.hidden=!r.hidden;writeExtra(MEASURE_DEFS_KEY,rows);renderMeasureDefinitions();renderMeasureButtons();}});}
 function renderMeasureButtons(){const host=document.getElementById('measureLaunchGrid');host.querySelectorAll('[data-user-measure]').forEach(x=>x.remove());measureDefinitions().filter(x=>!x.hidden).forEach(r=>{const b=document.createElement('button');b.className='measure-launch';b.type='button';b.dataset.userMeasure=r.id;b.innerHTML=`<span>📐</span><strong>${safeText(r.name)}</strong><small>${safeText(r.unit||'数値')}</small>`;b.onclick=()=>openUserMeasurement(r);host.appendChild(b);});}
-function openUserMeasurement(def){openMeasurePanel('その他');activeMeasureType=def.name;document.getElementById('measureType').value='その他';document.getElementById('measurePanelTitle').textContent=def.name+'を記録';document.getElementById('measureValueLabel').textContent=def.name+(def.unit?'（'+def.unit+'）':'');document.getElementById('measureUnit').value=def.unit||'';document.getElementById('measureUnitField').hidden=true;}
+function openUserMeasurement(def){openMeasurePanel('その他');activeMeasureType=def.name;document.getElementById('measureType').value='その他';document.getElementById('measurePanelTitle').textContent=def.name+'を記録';document.getElementById('measureValueLabel').textContent=def.name+(def.unit?'（'+def.unit+'）':'');document.getElementById('measureUnit').value=def.unit||'';document.getElementById('measureUnitField').hidden=true;document.getElementById('measureValue').value=safeMeasureInitialValue(def.name);}
 // カスタム項目も既存の測定記録のフォーマット (type,value,unit,startTs,note) を利用
 const measureSaveButton=document.getElementById('measureSave');
-measureSaveButton.addEventListener('click',()=>{},false);
-document.getElementById('addMeasureDef').onclick=()=>{const name=document.getElementById('newMeasureName').value.trim(),unit=document.getElementById('newMeasureUnit').value.trim();if(!name)return alert('測定項目名を入力してください');if(measureDefinitions().some(x=>x.name===name))return alert('同じ項目名があります');const rows=measureDefinitions();rows.push({id:newPresetId(),name,unit,hidden:false});if(writeExtra(MEASURE_DEFS_KEY,rows)){document.getElementById('newMeasureName').value='';document.getElementById('newMeasureUnit').value='';renderMeasureDefinitions();renderMeasureButtons();}};
+// 測定の保存イベントは本来のmeasureSaveリスナーのみ。
+document.getElementById('addMeasureDef').onclick=()=>{const name=document.getElementById('newMeasureName').value.trim(),unit=document.getElementById('newMeasureUnit').value.trim();if(!name)return alert('測定項目名を入力してください');if([...Object.keys(measureUnits),'血圧',...measureDefinitions().map(x=>x.name)].includes(name))return alert('同じ項目名があります');const rows=measureDefinitions();rows.push({id:newPresetId(),name,unit,hidden:false});if(writeExtra(MEASURE_DEFS_KEY,rows)){document.getElementById('newMeasureName').value='';document.getElementById('newMeasureUnit').value='';renderMeasureDefinitions();renderMeasureButtons();safeRenderMeasureDefaults(name);}};
 function exerciseDefinitions(){return readExtra(EXERCISE_DEFS_KEY);}
 function renderExerciseDefinitions(){const rows=exerciseDefinitions(),host=document.getElementById('exerciseDefList');host.innerHTML=rows.map(x=>`<div class="manage-row"><span>${safeText(x.name)}<small> ${x.mode==='reps'?x.reps+'回 / '+x.seconds+'秒':'時間計測'}</small></span><button type="button" data-ex-rename="${safeText(x.id)}">名前変更</button><button type="button" data-ex-toggle="${safeText(x.id)}">${x.hidden?'表示':'非表示'}</button></div>`).join('');host.querySelectorAll('[data-ex-rename]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exRename),name=prompt('運動名',r?.name||'');if(name?.trim()&&r){r.name=name.trim();writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});host.querySelectorAll('[data-ex-toggle]').forEach(b=>b.onclick=()=>{const r=rows.find(x=>x.id===b.dataset.exToggle);if(r){r.hidden=!r.hidden;writeExtra(EXERCISE_DEFS_KEY,rows);renderExerciseDefinitions();renderExercises();}});}
 document.getElementById('addExerciseDef').onclick=()=>{const name=document.getElementById('newExerciseName').value.trim(),mode=document.getElementById('newExerciseMode').value,reps=Number(document.getElementById('newExerciseReps').value),seconds=Number(document.getElementById('newExerciseSeconds').value);if(!name||mode==='reps'&&(!Number.isInteger(reps)||reps<1||reps>1000||!Number.isInteger(seconds)||seconds<1||seconds>60))return alert('名前・回数・秒数を確認してください');const rows=exerciseDefinitions();rows.push({id:newPresetId(),name,mode,reps,seconds,hidden:false});if(writeExtra(EXERCISE_DEFS_KEY,rows)){document.getElementById('newExerciseName').value='';renderExerciseDefinitions();renderExercises();}};
@@ -3873,13 +3974,16 @@ showMeasurements();showBreathing();updateHome();
   v5.5 共通履歴: 編集画面・描画位置の統一
   元の保存形式と保存キーは維持する。
 ========================================================= */
-let unifiedHistoryVisible=50;
+let unifiedHistoryVisible=10;
 function renderUnifiedHistory(){
   const host=document.getElementById('unifiedHistoryList');
   if(!host)return;
-  const events=buildTimelineEvents().filter(it=>Number.isFinite(Number(it.startTs)));
+  const selectedKind=document.getElementById('safeHistoryKind')?.value||'';
+  const since=document.getElementById('safeHistoryFrom')?.value||'';
+  const minDate=since?new Date(since+'T00:00:00').getTime():0;
+  const events=buildTimelineEvents().filter(it=>Number.isFinite(Number(it.startTs)) && (!selectedKind || it.kind===selectedKind) && (!since || Number(it.startTs)>=minDate));
   host.innerHTML=events.length?events.slice(0,unifiedHistoryVisible).map(it=>{
-    const subtitle=fmtDateStr(it.startTs)+' '+timeWithSeconds(it.startTs)+(it.endTs!=null?' ～ '+fmtDateStr(it.endTs)+' '+timeWithSeconds(it.endTs):'');
+    const subtitle=fmtDateStr(it.startTs)+' '+timeWithSeconds(it.startTs)+(it.endTs!=null && it.endTs>it.startTs?' ～ '+fmtDateStr(it.endTs)+' '+timeWithSeconds(it.endTs)+'　｜　経過 '+fmtDur((it.endTs-it.startTs)/1000):'');
     const id=String(it.ref?.id??'');
     return `<div class="record-item"><div style="min-width:0;flex:1"><b>${safeText(it.icon+' '+it.title)}</b><div class="meta">${safeText(subtitle)}</div>${it.detail?`<div class="meta">${safeText(it.detail)}</div>`:''}</div><button type="button" class="edit-history-btn" data-uh-kind="${safeText(it.kind)}" data-uh-id="${safeText(id)}">編集</button></div>`;
   }).join(''):'<div class="empty">記録はありません</div>';
@@ -3887,7 +3991,7 @@ function renderUnifiedHistory(){
   if(more)more.style.display=events.length>unifiedHistoryVisible?'block':'none';
   host.querySelectorAll('[data-uh-kind]').forEach(b=>b.addEventListener('click',()=>openUnifiedHistoryEdit(b.dataset.uhKind,b.dataset.uhId)));
 }
-document.getElementById('unifiedHistoryMore')?.addEventListener('click',()=>{unifiedHistoryVisible+=50;renderUnifiedHistory();});
+document.getElementById('unifiedHistoryMore')?.addEventListener('click',()=>{unifiedHistoryVisible+=10;renderUnifiedHistory();});
 function openUnifiedHistoryEdit(kind,id){
   if(['measure','breath','exercise'].includes(kind))return openExtraRecordEdit(kind,id);
   const entries={pain:['painRecords','pain'],symptom:['symptomEvents','symptom'],nopain:['noPainRecords','generic'],menstrual:['menstrualEvents','generic'],discharge:['dischargeEvents','discharge'],lifestyle:['lifestyleEvents','generic'],sleep:['sleepEvents','generic'],wellness:['wellnessEvents','generic']};
@@ -3971,10 +4075,250 @@ function openExtraRecordEdit(kind,id){
 }
 // 保存処理の直後に共通履歴を更新（書き込みの成功判定は元の実装に委ねる）。
 const v55OriginalSaveData=saveData;
-saveData=function(...args){const result=v55OriginalSaveData(...args);setTimeout(renderUnifiedHistory,0);return result;};
+saveData=function(...args){const result=v55OriginalSaveData(...args);if(result===false){const x=document.getElementById('safeSaveFailure');if(x)x.hidden=false;alert('保存に失敗しました。記録が未保存の可能性があります。画面を閉じず、バックアップと端末容量を確認してください。');}setTimeout(renderUnifiedHistory,0);return result;};
 const v55OriginalWriteExtra=writeExtra;
-writeExtra=function(...args){const ok=v55OriginalWriteExtra(...args);if(ok)setTimeout(renderUnifiedHistory,0);return ok;};
+writeExtra=function(...args){const ok=v55OriginalWriteExtra(...args);if(ok)setTimeout(renderUnifiedHistory,0);else{const x=document.getElementById('safeSaveFailure');if(x)x.hidden=false;}return ok;};
 renderUnifiedHistory();
+
+/* ==== v5.6: local-only improvements, no remote API calls ==== */
+function safeReadMeasureDefaults(){try{const val=JSON.parse(localStorage.getItem(SAFE_MEASURE_DEFAULTS_KEY)||'{}');return val&&typeof val==='object'&&!Array.isArray(val)?val:{};}catch(_){return {};}}
+function safeMeasureInitialValue(type){const d=safeReadMeasureDefaults()[type]||{mode:'blank'};if(d.mode==='preset')return String(d.value??'');if(d.mode==='last'){const entries=getMeasurements().filter(x=>x.type===type&&Number.isFinite(Number(x.value)));entries.sort((a,b)=>Number(b.startTs)-Number(a.startTs));return entries.length?String(entries[0].value):'';}return '';}
+function safeRenderMeasureDefaults(selectedName){
+ const host=document.getElementById('safeMeasureDefaultManager');if(!host)return;
+ const names=[...new Set(['体温','体重','身長','最高血圧','最低血圧','脈拍',...measureDefinitions().filter(x=>!x.hidden).map(x=>x.name)])];
+ const old=host.querySelector('#safeDefaultTarget')?.value;
+ const chosen=names.includes(selectedName)?selectedName:names.includes(old)?old:'体重';
+ host.innerHTML=`<div class="field"><label for="safeDefaultTarget">初期値を設定する測定項目</label><select id="safeDefaultTarget">${names.map(n=>`<option value="${safeText(n)}">${safeText(n)}</option>`).join('')}</select></div><div class="field"><label for="safeDefaultMode">初期表示の方法</label><select id="safeDefaultMode"><option value="preset">固定値を表示</option><option value="last">前回の記録値を表示</option><option value="blank">空欄にする</option></select></div><div class="field" id="safeDefaultValueField"><label for="safeDefaultValue">初期値</label><input id="safeDefaultValue" type="number" inputmode="decimal" step="any" placeholder="例：47.5"></div><button type="button" class="primary-btn" id="safeDefaultSave">この項目の初期値を保存</button><div class="hint" id="safeDefaultPreview" role="status" aria-live="polite"></div><div class="registered-list-heading">登録済みの初期値</div><div id="safeDefaultRegistered" aria-live="polite"></div>`;
+ const target=host.querySelector('#safeDefaultTarget'),modeEl=host.querySelector('#safeDefaultMode'),valueEl=host.querySelector('#safeDefaultValue'),valueField=host.querySelector('#safeDefaultValueField'),preview=host.querySelector('#safeDefaultPreview');
+ const registered=host.querySelector('#safeDefaultRegistered');
+ function renderRegistered(){
+  const all=safeReadMeasureDefaults();const rows=Object.entries(all).filter(([n,v])=>names.includes(n)&&v&&['preset','last','blank'].includes(v.mode));
+  registered.innerHTML=rows.length?rows.map(([n,v])=>{const desc=v.mode==='preset'?('固定値：'+v.value+' '+(measureUnits[n]||measureDefinitions().find(x=>x.name===n)?.unit||'')):v.mode==='last'?'前回の記録値':'空欄';return `<div class="manage-row"><span><b>${safeText(n)}</b><small class="registered-description">${safeText(desc)}</small></span><button type="button" data-default-edit="${safeText(n)}">編集</button></div>`;}).join(''):'<div class="hint">初期値を登録した項目はまだありません。</div>';
+  registered.querySelectorAll('[data-default-edit]').forEach(b=>b.addEventListener('click',()=>{target.value=b.dataset.defaultEdit;renderSelection();target.focus();}));
+ }
+ function renderSelection(){
+  const item=safeReadMeasureDefaults()[target.value]||{mode:'blank',value:''};
+  modeEl.value=['preset','last','blank'].includes(item.mode)?item.mode:'blank';
+  valueEl.value=item.value??'';
+  updateMode();
+  updatePreview();
+ }
+ function updateMode(){valueField.hidden=modeEl.value!=='preset';valueEl.disabled=modeEl.value!=='preset';}
+ function updatePreview(message){
+  const val=safeMeasureInitialValue(target.value);
+  preview.textContent=(message?message+'　':'')+'現在の記録画面の初期値：'+(val===''?'空欄':val)+(val===''?'':' '+(measureUnits[target.value]||measureDefinitions().find(x=>x.name===target.value)?.unit||''))+'（保存操作をするまで実測として記録されません）';
+ }
+ target.value=chosen;
+ target.addEventListener('change',renderSelection);
+ modeEl.addEventListener('change',updateMode);
+ host.querySelector('#safeDefaultSave').addEventListener('click',()=>{
+  const name=target.value,mode=modeEl.value,value=valueEl.value.trim();
+  if(!name)return alert('測定項目を選んでください。');
+  if(mode==='preset'&&(value===''||!Number.isFinite(Number(value))))return alert('設定する数値を入力してください。');
+  const all=safeReadMeasureDefaults();all[name]={mode,value:mode==='preset'?value:''};
+  try{
+   localStorage.setItem(SAFE_MEASURE_DEFAULTS_KEY,JSON.stringify(all));
+   const check=safeReadMeasureDefaults()[name];
+   if(!check||check.mode!==mode||(mode==='preset'&&check.value!==value))throw Error('検証失敗');
+   updatePreview('✅ '+name+'の初期値を保存しました。');
+   renderRegistered();
+  }catch(e){alert('初期値を保存できませんでした。端末の保存領域を確認してください。');}
+ });
+ renderSelection();
+ renderRegistered();
+}
+
+const safeOldRenderMeasureDefs=renderMeasureDefinitions;
+renderMeasureDefinitions=function(...args){const result=safeOldRenderMeasureDefs(...args);safeRenderMeasureDefaults();return result;};
+safeRenderMeasureDefaults();
+const safeHistoryKind=document.getElementById('safeHistoryKind'),safeHistoryFrom=document.getElementById('safeHistoryFrom');
+[safeHistoryKind,safeHistoryFrom].forEach(el=>el?.addEventListener('change',()=>{unifiedHistoryVisible=10;renderUnifiedHistory();}));
+// 音声は端末が提供するWeb Speech APIのみ。ネットワーク送信する外部TTS APIを使用しない。
+const SAFE_VOICE_BUILTINS=[
+ {id:'builtin_breathe',name:'ゆったり呼吸（4・2・6・2秒）',repeats:5,rate:1,voice:'',steps:[{text:'息を吸います',seconds:4,countdown:true},{text:'止めます',seconds:2,countdown:true},{text:'息を吐きます',seconds:6,countdown:true},{text:'止めます',seconds:2,countdown:true}]},
+ {id:'builtin_legs',name:'足上げ運動（10回）',repeats:10,rate:1,voice:'',steps:[{text:'足を上げます',seconds:3,announceRep:true},{text:'下げます',seconds:3}]}
+];
+let safeVoiceEditing=null,safeVoiceRun=null,safeVoiceTimer=null;
+const safeVoiceSupport=('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
+function safeVoiceItems(){const items=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x&&typeof x.id==='string'&&Array.isArray(x.steps));return [...SAFE_VOICE_BUILTINS,...items];}
+function safeRenderVoice(){
+ const items=safeVoiceItems();
+ const sel=document.getElementById('safeVoiceMenu');
+ if(sel){const old=sel.value;sel.innerHTML=items.map(x=>`<option value="${safeText(x.id)}">${safeText(x.name)}</option>`).join('');if(items.some(x=>x.id===old))sel.value=old;}
+ const host=document.getElementById('safeVoiceList');if(!host)return;
+ host.innerHTML='<div class="registered-list-heading">登録済みの音声メニュー</div>'+items.map(x=>{const builtin=x.id.startsWith('builtin_');const detail=x.steps.map(st=>st.text+' '+st.seconds+'秒').join(' → ');return `<div class="manage-row"><span><b>${safeText(x.name)}</b><small class="registered-description">${safeText(detail)} ／ ${safeText(x.repeats)}回・速度 ${safeText(x.rate||1)}${builtin?' ／ 定番メニュー':''}</small></span>${builtin?'':`<button type="button" data-safe-voice-edit="${safeText(x.id)}">編集</button><button type="button" data-safe-voice-del="${safeText(x.id)}">削除</button>`}</div>`;}).join('');
+ host.querySelectorAll('[data-safe-voice-edit]').forEach(btn=>btn.onclick=()=>{const item=items.find(x=>x.id===btn.dataset.safeVoiceEdit);if(!item)return;safeVoiceEditing=item.id;document.getElementById('safeVoiceName').value=item.name;document.getElementById('safeVoiceSteps').value=item.steps.map(x=>x.text+'｜'+x.seconds).join('\n');document.getElementById('safeVoiceRepeats').value=item.repeats;document.getElementById('safeVoiceSpeed').value=item.rate;document.getElementById('safeVoiceType').value=item.voice||'';document.getElementById('safeVoiceSave').textContent='変更を保存';document.getElementById('safeVoiceSettings').open=true;});
+ host.querySelectorAll('[data-safe-voice-del]').forEach(btn=>btn.onclick=()=>{if(!confirm('この音声メニューの設定を削除しますか？'))return;const rows=readExtra(SAFE_VOICE_DEFS_KEY).filter(x=>x.id!==btn.dataset.safeVoiceDel);if(writeExtra(SAFE_VOICE_DEFS_KEY,rows))safeRenderVoice();});
+}
+function safePopulateVoices(){if(!safeVoiceSupport)return;const field=document.getElementById('safeVoiceType'),current=field.value;const voices=speechSynthesis.getVoices().filter(v=>v.lang?.startsWith('ja')&&v.localService===true);field.innerHTML='<option value="">日本語音声を自動選択</option>'+voices.map(v=>`<option value="${safeText(v.name)}">${safeText(v.name)}</option>`).join('');field.value=voices.some(v=>v.name===current)?current:'';}
+if(safeVoiceSupport){safePopulateVoices();speechSynthesis.addEventListener?.('voiceschanged',safePopulateVoices);}
+function safeVoiceClearEdit(){safeVoiceEditing=null;['safeVoiceName','safeVoiceSteps'].forEach(id=>document.getElementById(id).value='');document.getElementById('safeVoiceRepeats').value=10;document.getElementById('safeVoiceSpeed').value=1;document.getElementById('safeVoiceSave').textContent='音声メニューを登録';}
+document.getElementById('safeVoiceClear').onclick=safeVoiceClearEdit;
+document.getElementById('safeVoiceSave').onclick=()=>{
+ const name=document.getElementById('safeVoiceName').value.trim(),text=document.getElementById('safeVoiceSteps').value,rate=Number(document.getElementById('safeVoiceSpeed').value),repeats=Number(document.getElementById('safeVoiceRepeats').value),voice=document.getElementById('safeVoiceType').value;
+ const lines=text.split(/\r?\n/).filter(x=>x.trim());
+ if(!name||name.length>60||lines.length<1||lines.length>30||!Number.isInteger(repeats)||repeats<1||repeats>200||rate<0.5||rate>1.5)return alert('名前、動作（1～30行）、繰り返し（1～200）、速度（0.5～1.5）を確認してください。');
+ const steps=[];for(const line of lines){const i=line.lastIndexOf('｜');if(i<1)return alert('動作は「足を上げます｜3」の形式で1行ずつ入力してください。');const desc=line.slice(0,i).trim(),seconds=Number(line.slice(i+1).trim());if(!desc||desc.length>150||!Number.isInteger(seconds)||seconds<1||seconds>120)return alert('文章は150字以内、秒数は1～120の整数で入力してください。');steps.push({text:desc,seconds});}
+ const rows=readExtra(SAFE_VOICE_DEFS_KEY),existing=rows.find(x=>x.id===safeVoiceEditing);
+ const record={id:existing?.id||newPresetId(),name,steps,repeats,rate,voice};
+ if(existing)Object.assign(existing,record);else rows.push(record);
+ if(writeExtra(SAFE_VOICE_DEFS_KEY,rows)){safeVoiceClearEdit();safeRenderVoice();const status=document.getElementById('safeVoiceSavedMessage');if(status)status.textContent='✅ '+name+' を登録済み一覧に保存しました。';}else{const status=document.getElementById('safeVoiceSavedMessage');if(status)status.textContent='⚠️ 保存に失敗しました。端末の空き容量を確認してください。';}
+};
+// v5.7: 音声は必ず既存の呼吸・運動の計測セッションに連動し、別セッションを作らない。
+// 経過時刻はDate.nowとの差分で計算する。読み上げ時間を秒数に加算しない。
+const guideAudio={session:null,lastSecond:-1,timer:null};
+function guideSpeak(text,voiceName='',rate=1){
+ if(!safeVoiceSupport)return false;
+ const voices=speechSynthesis.getVoices().filter(v=>v.lang?.startsWith('ja')&&v.localService===true);
+ const voice=voices.find(v=>v.name===voiceName)||voices[0];
+ if(!voice)return false;
+ try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.voice=voice;u.rate=Math.max(.5,Math.min(1.5,Number(rate)||1));speechSynthesis.speak(u);return true;}catch(_){return false;}
+}
+function guideStop(){if(guideAudio.timer)clearInterval(guideAudio.timer);guideAudio.timer=null;guideAudio.session=null;guideAudio.lastSecond=-1;if(safeVoiceSupport)speechSynthesis.cancel();const status=document.getElementById('guideVoiceState');if(status)status.textContent='音声案内は停止中です。';}
+function guideStart(id,steps,repeats=100000,opts={}){
+ guideStop();
+ if(!steps?.length)return;
+ if(!safeVoiceSupport||!speechSynthesis.getVoices().some(v=>v.lang?.startsWith('ja')&&v.localService===true)){
+  const status=document.getElementById('guideVoiceState');if(status)status.textContent='日本語の端末内音声が利用できないため、音声なしで記録を続けます。';return;
+ }
+ const normalized=steps.filter(x=>Number(x.seconds)>0),cycleMs=normalized.reduce((a,x)=>a+x.seconds*1000,0);
+ if(!cycleMs)return;
+ const run={id,steps:normalized,repeats,cycleMs,startedAt:Date.now(),opts};guideAudio.session=run;
+ const tick=()=>{
+  if(guideAudio.session!==run)return;
+  const elapsed=Date.now()-run.startedAt,second=Math.floor(elapsed/1000);
+  if(second===guideAudio.lastSecond)return;
+  guideAudio.lastSecond=second;
+  const cycle=Math.floor(elapsed/cycleMs);
+  if(cycle>=run.repeats){guideSpeak('終了です。お疲れさまでした。',opts.voice,opts.rate);guideAudio.session=null;clearInterval(guideAudio.timer);guideAudio.timer=null;
+   if(opts.stopOnComplete==='breath'&&breathingStarted)stopBreathing();
+   if(opts.stopOnComplete==='quick'&&readQuick().some(x=>x.id===id))stopQuick(id);
+   return;
+  }
+  let offset=elapsed%cycleMs,idx=0;
+  for(;idx<normalized.length;idx++){const ms=normalized[idx].seconds*1000;if(offset<ms)break;offset-=ms;}
+  const step=normalized[Math.min(idx,normalized.length-1)],inStep=Math.floor(offset/1000),phaseStart=inStep===0;
+  // 1秒ずつ短い発話を行う。日本語TTSの発話時間・OS割込による多少のずれは保証できない。
+  const text=phaseStart?(step.text+'、'+(inStep+1)):(String(inStep+1));
+  guideSpeak(text,opts.voice,opts.rate);
+  const label=document.getElementById('guideVoiceState');if(label)label.textContent=(opts.name||'音声案内')+'：'+(cycle+1)+'回目 / '+step.text+'・'+(inStep+1)+'秒';
+  if(opts.autoReps&&idx===normalized.length-1&&inStep===step.seconds-1){const rows=readQuick(),q=rows.find(x=>x.id===id);if(q&&q.repsDone<cycle+1){q.repsDone=cycle+1;storeQuick(rows);}}
+ };
+ guideAudio.lastSecond=-1;guideAudio.timer=setInterval(tick,120);tick();
+}
+function guideStepsForExercise(s){
+ const item=s.voiceMenuId?safeVoiceItems().find(x=>x.id===s.voiceMenuId):null;
+ if(item)return {steps:item.steps,repeats:item.repeats,voice:item.voice,rate:item.rate,name:item.name,autoReps:true};
+ const def=exerciseDefinitions().find(x=>x.id===s.exerciseId);
+ if(!def||def.mode!=='reps')return null;
+ const seconds=Math.max(1,Number(def.seconds)||3);
+ return {steps:[{text:def.name+'、上げます',seconds},{text:'下げます',seconds}],repeats:Math.max(1,Number(def.reps)||30),name:def.name,autoReps:true};
+}
+function guideStartForQuick(id){
+ if(!document.getElementById('guideVoiceEnabled')?.checked)return;
+ const s=readQuick().find(x=>x.id===id),plan=s?guideStepsForExercise(s):null;
+ if(!plan)return;
+ guideStart(id,plan.steps,plan.repeats,{...plan,stopOnComplete:'quick'});
+}
+const v57StartQuick=startQuick;
+startQuick=function(kind='unknown',exerciseId=null,preset={}){
+ v57StartQuick(kind,exerciseId,preset);
+ if(kind==='exercise'){
+  const newest=readQuick().filter(x=>x.kind==='exercise'&&x.endTs==null).sort((a,b)=>b.startTs-a.startTs)[0];
+  if(newest)guideStartForQuick(newest.id);
+ }
+};
+const v57StopQuick=stopQuick;
+stopQuick=function(id){if(guideAudio.session?.id===id)guideStop();return v57StopQuick(id);};
+const v57StopBreathing=stopBreathing;
+stopBreathing=function(){if(guideAudio.session?.id==='breath')guideStop();return v57StopBreathing();};
+const breathStartButton=document.getElementById('breathToggle');
+breathStartButton.addEventListener('click',()=>{
+ if(!breathingStarted)return;
+ if(document.getElementById('breathVoiceEnabled').checked){
+  const p=activeBreathPlan;
+  const steps=[{text:'息を吸います',seconds:p.inhale},...(p.hold?[{text:'止めます',seconds:p.hold}]:[]),{text:'息を吐きます',seconds:p.exhale},...(p.holdAfter?[{text:'止めます',seconds:p.holdAfter}]:[])];
+  const count=Math.max(1,Math.min(100,Number(document.getElementById('breathVoiceCycles').value)||5));
+  guideStart('breath',steps,count,{name:'呼吸ガイド',stopOnComplete:'breath'});
+ }
+});
+// 既存の運動メニューの表示へ自作ガイドを混ぜる。開始と同時に同じ計測中セッションで記録。
+const v57RenderExercises=renderExercises;
+renderExercises=function(...args){
+ const result=v57RenderExercises(...args),host=document.querySelector('#exerciseMenu .life-launch-grid');
+ if(host){for(const item of safeVoiceItems().filter(x=>x.id!=='builtin_breathe')){
+  if(item.id==='builtin_legs'&&exerciseDefinitions().some(x=>x.name===item.name))continue;
+  const b=document.createElement('button');b.type='button';b.className='life-launch';b.innerHTML='<span class="life-emoji">🔊</span><strong>'+safeText(item.name)+'</strong><small>音声案内付き・記録に保存</small>';
+  b.onclick=()=>startQuick('exercise',null,{title:item.name,voiceMenuId:item.id});host.appendChild(b);
+ }}return result;
+};
+// 自作ガイドの追加・削除後は運動メニューも同期して更新。
+const v57SafeRenderVoice=safeRenderVoice;
+safeRenderVoice=function(...args){const r=v57SafeRenderVoice(...args);renderExercises();return r;};
+// ガイド設定は録音中に編集しても、開始したセッションの内容をスナップショットで使用。
+// 画面が非表示になるとWeb Speechは保証されないので安全に案内停止。記録時刻は維持。
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&guideAudio.session)guideStop();});
+document.getElementById('safeReloadApp').onclick=()=>{if(confirm('画面を再読み込みします。入力途中の内容は失われる可能性があります。記録中の計測は維持されます。続けますか？'))location.reload();};
+document.getElementById('safeInstallHelp').onclick=()=>alert('iPhone：SafariでアプリのURLを開く → 共有 → ホーム画面に追加。\nAndroid：Chromeのメニューから「ホーム画面に追加」または「アプリをインストール」。\n\nすでにホーム画面で記録している場合は、旧アプリを削除しないでください。Safariとホーム画面アプリの保存領域は異なる場合があります。');
+safeRenderVoice();
+</script>
+
+<style>
+/* v5.8: 秒を含む日時入力を統一。元の値・保存形式は変更しない */
+.hms-selects{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;min-width:0;box-sizing:border-box}
+.hms-unit{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hms-unit select{display:block!important;min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important;min-height:48px;padding:9px 5px;text-align:center;font-variant-numeric:tabular-nums;background:var(--card2,#334155);color:var(--text,#fff);border:1px solid var(--border,#64748b);border-radius:10px;font-size:16px}
+.hms-unit small{text-align:center;color:var(--muted,#a0aec0);font-size:12px}
+#safeDefaultValueField[hidden]{display:none!important}
+</style>
+<script>
+/* v5.8: 全画面共通の「時・分・秒」プルダウン。保存処理は従来のHH:MM:SSのまま */
+(function(){
+ const descriptor=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+ const re=/^(\d{2}):(\d{2}):(\d{2})$/;
+ const pad=n=>String(n).padStart(2,'0');
+ function attach(input){
+  if(input.dataset.hmsEnhanced)return;
+  input.dataset.hmsEnhanced='1';
+  let current=descriptor.get.call(input);
+  const holder=document.createElement('div');holder.className='hms-selects';holder.setAttribute('role','group');
+  const selects=[];
+  [['時',24],['分',60],['秒',60]].forEach(([label,max],index)=>{
+   const wrapper=document.createElement('div');wrapper.className='hms-unit';
+   const select=document.createElement('select');select.setAttribute('aria-label',label);select.title=label;
+   select.innerHTML='<option value="">--</option>'+Array.from({length:max},(_,i)=>'<option value="'+pad(i)+'">'+pad(i)+'</option>').join('');
+   wrapper.appendChild(select);const caption=document.createElement('small');caption.textContent=label;wrapper.appendChild(caption);holder.appendChild(wrapper);selects.push(select);
+  });
+  function sync(v){
+   const m=re.exec(v||'');
+   selects.forEach((el,i)=>{el.value=m?m[i+1]:'';});
+  }
+  function apply(){
+   if(selects.every(el=>el.value==='')){input.value='';return;}
+   selects.forEach(el=>{if(!el.value)el.value='00';});
+   input.value=selects.map(el=>el.value).join(':');
+   input.dispatchEvent(new Event('input',{bubbles:true}));
+   input.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  // .value = '...' は既存のコードでも多用されるので、代入時に選択状態も同期する。
+  try{Object.defineProperty(input,'value',{configurable:true,enumerable:true,
+   get(){return descriptor.get.call(this);},
+   set(v){descriptor.set.call(this,String(v??''));sync(descriptor.get.call(this));}
+  });}catch(_){ /* 普通のinputでも値の読み出しを維持 */ }
+  selects.forEach(el=>el.addEventListener('change',apply));
+  input.insertAdjacentElement('afterend',holder);
+  input.style.display='none';
+  sync(current);
+ }
+ function scan(root){
+  if(root.nodeType!==1 && root.nodeType!==9)return;
+  if(root.matches?.('input[type="text"][placeholder="HH:MM:SS"]'))attach(root);
+  root.querySelectorAll?.('input[type="text"][placeholder="HH:MM:SS"]').forEach(attach);
+ }
+ scan(document);
+ // 編集・緊急記録の入力欄は動的に作られるため、生成後に同じ部品を付ける。
+ new MutationObserver(changes=>{for(const change of changes)for(const node of change.addedNodes)scan(node);}).observe(document.body,{childList:true,subtree:true});
+})();
 </script>
 </body>
 </html>
